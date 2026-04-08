@@ -34,7 +34,7 @@ class ToolRegistry:
 
 class PermissionMgr:
     SAFE_TOOLS = {"Read", "Glob", "Grep"}
-    ASK_TOOLS = {"Bash", "Write", "Edit"}
+    ASK_TOOLS = {"Bash", "Write", "Edit", "SubAgent", "ParallelAgents"}
     _ALWAYS_CONFIRM_PATTERNS = [r"\brm\s+-rf\s+/", r"\bsudo\b", r"\bmkfs\b", r"\bdd\b.*\bof=/dev/"]
 
     def __init__(self, config):
@@ -105,4 +105,3 @@ class PermissionMgr:
                 return False
             return result
         return False
-

@@ -133,7 +133,7 @@ class Session:
         return self._token_estimate + self._estimate_tokens(self.system_prompt)
 
     def _summarize_old_messages(self, old_messages):
-        if not self._client or not self.config.sidecar_model:
+        if not self._client or not self.config.model:
             return None
         parts = []
         for msg in old_messages:
@@ -163,7 +163,7 @@ class Session:
             },
         ]
         try:
-            resp = self._client.chat(model=self.config.sidecar_model, messages=prompt, tools=None, stream=False)
+            resp = self._client.chat(model=self.config.model, messages=prompt, tools=None, stream=False)
             choices = resp.get("choices", [])
             if choices:
                 summary = choices[0].get("message", {}).get("content", "")
@@ -241,4 +241,3 @@ class Session:
                 os.unlink(tmp_path)
             except OSError:
                 pass
-

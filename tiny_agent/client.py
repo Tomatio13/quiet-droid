@@ -55,11 +55,8 @@ class OpenAICompatClient:
                     tc = dict(tc)
                     func = dict(tc.get("function", {}))
                     args = func.get("arguments", "{}")
-                    if isinstance(args, str):
-                        try:
-                            func["arguments"] = json.loads(args)
-                        except json.JSONDecodeError:
-                            func["arguments"] = {"raw": args}
+                    if not isinstance(args, str):
+                        func["arguments"] = json.dumps(args, ensure_ascii=False)
                     normalized.append({
                         "id": tc.get("id", f"call_{uuid.uuid4().hex[:8]}"),
                         "type": "function",

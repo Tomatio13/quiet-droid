@@ -312,7 +312,7 @@ class TUI:
   {_c198}/debug{C.RESET}             Toggle debug mode
   {_c198}\"\"\"{C.RESET}                Multi-line input
   {_c51}━━ Tools {sep[8:]}{C.RESET}
-  {_c87}Bash, Read, Write, Edit, Glob, Grep{C.RESET}{ime_hint}
+  {_c87}Bash, Read, Write, Edit, Glob, Grep, SubAgent, ParallelAgents{C.RESET}{ime_hint}
 """)
 
     def show_status(self, session, config):

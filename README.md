@@ -47,7 +47,6 @@ OpenAI互換APIを使う、最小構成のターミナル向けコーディン�
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 export OPENAI_API_KEY="your-api-key"
 export TINY_AGENT_MODEL="gpt-4.1-mini"
-export TINY_AGENT_SIDECAR_MODEL="qwen3:4b"
 export TINY_AGENT_DEBUG="1"
 ```
 
@@ -62,7 +61,6 @@ MODEL=gpt-4.1-mini
 MAX_TOKENS=8192
 TEMPERATURE=0.7
 CONTEXT_WINDOW=32768
-SIDECAR_MODEL=qwen3:4b
 ```
 
 ### CLI

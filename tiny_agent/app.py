@@ -10,7 +10,7 @@ from .prompts import build_system_prompt
 from .session import Session
 from .skills import load_skills
 from .terminal import C, ansi, init_terminal_colors
-from .tools import PermissionMgr, ToolRegistry
+from .tools import MultiAgentCoordinator, ParallelAgentTool, PermissionMgr, SubAgentTool, ToolRegistry
 from .tui import HAS_READLINE, TUI, readline
 
 
@@ -66,6 +66,9 @@ def main():
     session.set_client(client)
     registry = ToolRegistry().register_defaults()
     permissions = PermissionMgr(config)
+    registry.register(SubAgentTool(config, client, registry, permissions))
+    coordinator = MultiAgentCoordinator(config, client, registry, permissions)
+    registry.register(ParallelAgentTool(coordinator))
     agent = Agent(config, client, registry, permissions, session, tui)
 
     def signal_handler(sig, frame):
@@ -152,8 +155,6 @@ def main():
                         ok, fresh_models = client.check_connection()
                         print(f"\n  {C.BOLD}Current model:{C.RESET} {ansi(chr(27)+'[38;5;51m')}{config.model}{C.RESET}")
                         print(f"  {C.DIM}Context window: {config.context_window} tokens{C.RESET}")
-                        if config.sidecar_model:
-                            print(f"  {C.DIM}Sidecar: {config.sidecar_model}{C.RESET}")
                         if ok and fresh_models:
                             print(f"\n  {C.BOLD}Installed models:{C.RESET}")
                             show_model_list(fresh_models)

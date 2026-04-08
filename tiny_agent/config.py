@@ -41,7 +41,6 @@ class Config:
     APP_NAME = "tiny-agent"
     DEFAULT_BASE_URL = "http://localhost:8000/v1"
     DEFAULT_MODEL = ""
-    DEFAULT_SIDECAR = ""
     DEFAULT_MAX_TOKENS = 8192
     DEFAULT_TEMPERATURE = 0.7
     DEFAULT_CONTEXT_WINDOW = 32768
@@ -72,13 +71,10 @@ class Config:
         ("llama3.2:3b", 4, "E"),
     ]
 
-    _SIDECAR_CANDIDATES = ["qwen3:8b", "qwen3:4b", "qwen3:1.7b", "llama3.2:3b"]
-
     def __init__(self):
         self.base_url = self.DEFAULT_BASE_URL
         self.api_key = ""
         self.model = self.DEFAULT_MODEL
-        self.sidecar_model = self.DEFAULT_SIDECAR
         self.max_tokens = self.DEFAULT_MAX_TOKENS
         self.temperature = self.DEFAULT_TEMPERATURE
         self.context_window = self.DEFAULT_CONTEXT_WINDOW
@@ -130,8 +126,6 @@ class Config:
                     val = val.strip().strip("\"'")
                     if key == "MODEL" and val:
                         self.model = val
-                    elif key == "SIDECAR_MODEL" and val:
-                        self.sidecar_model = val
                     elif key in {"OPENAI_BASE_URL", "BASE_URL", "OLLAMA_HOST"} and val:
                         self.base_url = val
                     elif key in {"OPENAI_API_KEY", "API_KEY"} and val:
@@ -163,8 +157,6 @@ class Config:
             self.api_key = os.environ["OPENAI_API_KEY"]
         if os.environ.get("TINY_AGENT_MODEL"):
             self.model = os.environ["TINY_AGENT_MODEL"]
-        if os.environ.get("TINY_AGENT_SIDECAR_MODEL"):
-            self.sidecar_model = os.environ["TINY_AGENT_SIDECAR_MODEL"]
         if os.environ.get("TINY_AGENT_DEBUG") == "1":
             self.debug = True
 
@@ -248,18 +240,6 @@ class Config:
                 return model_name + ":latest"
         return None
 
-    def _pick_sidecar(self, installed, main_model):
-        installed_set = set(installed)
-        for candidate in self._SIDECAR_CANDIDATES:
-            if candidate == main_model:
-                continue
-            if candidate in installed_set:
-                self.sidecar_model = candidate
-                return
-            if candidate + ":latest" in installed_set:
-                self.sidecar_model = candidate + ":latest"
-                return
-
     def _auto_detect_model(self):
         if self.model:
             self._apply_context_window(self.model)
@@ -271,8 +251,6 @@ class Config:
             if best:
                 self.model = best
                 self._apply_context_window(best)
-                if not self.sidecar_model:
-                    self._pick_sidecar(installed, best)
                 return
         if ram_gb >= 32:
             self.model = "qwen3-coder:30b"
@@ -281,11 +259,6 @@ class Config:
         else:
             self.model = "qwen3:1.7b"
             self.context_window = 4096
-        if not self.sidecar_model:
-            if ram_gb >= 32:
-                self.sidecar_model = "qwen3:8b"
-            elif ram_gb >= 16:
-                self.sidecar_model = "qwen3:1.7b"
 
     def _apply_context_window(self, model_name):
         if self.context_window != self.DEFAULT_CONTEXT_WINDOW:
@@ -321,14 +294,14 @@ class Config:
         if self.temperature < 0 or self.temperature > 2:
             self.temperature = self.DEFAULT_TEMPERATURE
         safe_model = re.compile(r"^[a-zA-Z0-9_.:\-/]+$")
-        for attr in ("model", "sidecar_model"):
+        for attr in ("model",):
             value = getattr(self, attr, "")
             if value and not safe_model.match(value):
                 print(
                     f"{C.YELLOW}Warning: invalid {attr} name {value!r} — resetting to default.{C.RESET}",
                     file=__import__("sys").stderr,
                 )
-                setattr(self, attr, "" if attr == "sidecar_model" else self.DEFAULT_MODEL)
+                setattr(self, attr, self.DEFAULT_MODEL)
 
     def _ensure_dirs(self):
         for directory in [self.config_dir, self.state_dir, self.sessions_dir]:

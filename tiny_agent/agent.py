@@ -24,7 +24,35 @@ class Agent:
         self.tui = tui
         self._interrupted = threading.Event()
 
+    @staticmethod
+    def _detect_parallel_tasks(user_input):
+        text = user_input.strip()
+        if len(text) < 10 or text.endswith("?") or text.endswith("？"):
+            return []
+        numbered = re.findall(r"(?:^|\n\s*|\s{2,})(?:\d+[.)）]\s*|[（(]\d+[)）]\s*)(.+?)(?=(?:\n\s*|\s{2,})(?:\d+[.)）]|[（(]\d+)|$)", text)
+        if len(numbered) >= 2:
+            return [task.strip() for task in numbered if task.strip()]
+        investigate_pattern = re.compile(r"(?:調べ|探し|検索|数え|確認|教え|見つけ|search|find|count|check|list|show)", re.IGNORECASE)
+        if investigate_pattern.search(text):
+            parts = re.split(r"[、,]\s*(?:そして|また|and\s+)?|(?:と(?:、)?)", text)
+            tasks = [part.strip() for part in parts if len(part.strip()) >= 5]
+            if 2 <= len(tasks) <= 4:
+                return tasks
+        return []
+
     def run(self, user_input):
+        parallel_tasks = self._detect_parallel_tasks(user_input)
+        if len(parallel_tasks) >= 2:
+            tool = self.registry.get("ParallelAgents")
+            if tool:
+                self.session.add_user_message(user_input)
+                result = tool.execute({"tasks": [{"prompt": task, "max_turns": 10} for task in parallel_tasks]})
+                self.session.add_assistant_message(result)
+                print(f"\n{C.BBLUE}assistant{C.RESET}: ", end="")
+                self.tui._render_markdown(result)
+                print()
+                return
+
         self.session.add_user_message(user_input)
         self._interrupted.clear()
         recent_tool_calls = []
