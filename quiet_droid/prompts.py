@@ -92,7 +92,7 @@ IMPORTANT — This is Windows:
     instruction_files = []
     search_dir = cwd
     for _ in range(10):
-        for filename in [".quiet-ai.json", "CLAUDE.md", "AGENTS.md"]:
+        for filename in [".quiet-droid.json", "CLAUDE.md", "AGENTS.md"]:
             path = os.path.join(search_dir, filename)
             if os.path.isfile(path) and not os.path.islink(path):
                 instruction_files.append((search_dir, filename, path))

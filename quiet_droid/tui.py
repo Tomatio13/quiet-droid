@@ -59,21 +59,21 @@ class TUI:
         term_w = get_terminal_width()
         if term_w >= 82:
             banner_lines = [
-                "   ██████╗ ██╗   ██╗██╗███████╗████████╗        █████╗ ██╗",
-                "  ██╔═══██╗██║   ██║██║██╔════╝╚══██╔══╝       ██╔══██╗██║",
-                "  ██║   ██║██║   ██║██║█████╗     ██║          ███████║██║",
-                "  ██║▄▄ ██║██║   ██║██║██╔══╝     ██║          ██╔══██║██║",
-                "  ╚██████╔╝╚██████╔╝██║███████╗   ██║   ██╗    ██║  ██║██║",
-                "   ╚══▀▀═╝  ╚═════╝ ╚═╝╚══════╝   ╚═╝   ╚═╝    ╚═╝  ╚═╝╚═╝",
+                "   ██████╗ ██╗   ██╗██╗███████╗████████╗    ██████╗ ██████╗  █████╗ ██╗██████╗ ",
+                "  ██╔═══██╗██║   ██║██║██╔════╝╚══██╔══╝    ██╔══██╗██╔══██╗██╔══██╗██║██╔══██╗",
+                "  ██║   ██║██║   ██║██║█████╗     ██║       ██║  ██║██████╔╝██║  ██║██║██║  ██║",
+                "  ██║▄▄ ██║██║   ██║██║██╔══╝     ██║       ██║  ██║██╔══██╗██║  ██║██║██║  ██║",
+                "  ╚██████╔╝╚██████╔╝██║███████╗   ██║       ██████╔╝██║  ██║╚█████╔╝██║██████╔╝",
+                "   ╚══▀▀═╝  ╚═════╝ ╚═╝╚══════╝   ╚═╝       ╚═════╝ ╚═╝  ╚═╝ ╚════╝ ╚═╝╚═════╝ ",
             ]
         elif term_w >= 50:
             banner_lines = [
-                "  ╔═╗╦ ╦╦╔═╗╔╦╗   ╔═╗╦",
-                "  ║═╬╗║ ║║║╣  ║    ╠═╣║",
-                "  ╚═╝╚╚═╝╩╚═╝ ╩    ╩ ╩╩",
+                "  ╔═╗╦ ╦╦╔═╗╔╦╗  ╔╦╗╦═╗╔═╗╦╔╦╗",
+                "  ║═╬╗║ ║║║╣  ║    ║║╠╦╝║ ║║ ║║",
+                "  ╚═╝╚╚═╝╩╚═╝ ╩   ═╩╝╩╚═╚═╝╩═╩╝",
             ]
         else:
-            banner_lines = ["  QUIET-AI"]
+            banner_lines = ["  QUIET DROID"]
         gradient = [
             ansi("\033[38;5;31m"),
             ansi("\033[38;5;38m"),
@@ -85,7 +85,7 @@ class TUI:
         print()
         for i, line in enumerate(banner_lines):
             print(f"{gradient[i % len(gradient)]}{line}{C.RESET}")
-        print(f"\n  {ansi(chr(27)+'[38;5;38m')}{C.BOLD}QUIET-AI{C.RESET}")
+        print(f"\n  {ansi(chr(27)+'[38;5;38m')}{C.BOLD}QUIET DROID{C.RESET}")
         print(f"  {ansi(chr(27)+'[38;5;44m')}API:{C.RESET} {config.base_url}")
         print(f"  {ansi(chr(27)+'[38;5;44m')}CWD:{C.RESET} {os.getcwd()}")
         if not model_ok:
@@ -215,7 +215,7 @@ class TUI:
                 "function": {"name": function.get("name", ""), "arguments": args},
             })
         if content:
-            print(f"\n{C.BBLUE}assistant{C.RESET}: ", end="")
+            print(f"\n{C.BBLUE}droid{C.RESET}: ", end="")
             self._render_markdown(content)
             print()
         return content, normalized
@@ -223,7 +223,7 @@ class TUI:
     def stream_response(self, response_iter, known_tools=None):
         text_parts = []
         tool_calls = {}
-        print(f"\n{C.BBLUE}assistant{C.RESET}: ", end="", flush=True)
+        print(f"\n{C.BBLUE}droid{C.RESET}: ", end="", flush=True)
         for raw_line in response_iter:
             if not raw_line:
                 continue

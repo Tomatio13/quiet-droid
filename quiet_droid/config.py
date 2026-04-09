@@ -38,7 +38,7 @@ def _get_vram_gb() -> int:
 
 
 class Config:
-    APP_NAME = "quiet-ai"
+    APP_NAME = "quiet-droid"
     DEFAULT_BASE_URL = "http://localhost:8000/v1"
     DEFAULT_MODEL = ""
     DEFAULT_MAX_TOKENS = 8192
@@ -158,9 +158,9 @@ class Config:
             self.base_url = os.environ["OLLAMA_HOST"]
         if os.environ.get("OPENAI_API_KEY"):
             self.api_key = os.environ["OPENAI_API_KEY"]
-        if os.environ.get("QUIET_AI_MODEL"):
-            self.model = os.environ["QUIET_AI_MODEL"]
-        if os.environ.get("QUIET_AI_DEBUG") == "1":
+        if os.environ.get("QUIET_DROID_MODEL"):
+            self.model = os.environ["QUIET_DROID_MODEL"]
+        if os.environ.get("QUIET_DROID_DEBUG") == "1":
             self.debug = True
 
     def _load_cli_args(self, argv=None):
@@ -172,7 +172,7 @@ class Config:
             else:
                 normalized.append(arg)
         parser = argparse.ArgumentParser(
-            prog="quiet-ai",
+            prog="quiet-droid",
             description="Coding agent powered by an OpenAI-compatible API",
         )
         parser.add_argument("-p", "--prompt", help="One-shot prompt (non-interactive)")
@@ -185,7 +185,7 @@ class Config:
         parser.add_argument("--max-tokens", type=int, help="Max output tokens")
         parser.add_argument("--temperature", type=float, help="Sampling temperature")
         parser.add_argument("--context-window", type=int, help="Context window size")
-        parser.add_argument("--version", action="version", version=f"Quiet-AI {__version__}")
+        parser.add_argument("--version", action="version", version=f"Quiet Droid {__version__}")
         parser.add_argument("--dangerously-skip-permissions", action="store_true", help="Alias for -y")
         args = parser.parse_args(normalized)
 
