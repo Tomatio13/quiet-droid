@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from tiny_agent.app import main
+from quiet_ai.app import main
 
 
 if __name__ == "__main__":

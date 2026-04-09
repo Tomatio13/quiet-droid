@@ -5,7 +5,7 @@ def load_skills(config):
     skills = {}
     skill_dirs = [
         os.path.join(config.config_dir, "skills"),
-        os.path.join(config.cwd, ".tiny-agent", "skills"),
+        os.path.join(config.cwd, ".quiet-ai", "skills"),
         os.path.join(config.cwd, "skills"),
     ]
     for skill_dir in skill_dirs:

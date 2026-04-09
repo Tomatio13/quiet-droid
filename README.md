@@ -1,4 +1,4 @@
-# tiny-agent
+# Quiet-AI
 
 OpenAI互換APIを使う、最小構成のターミナル向けコーディングエージェントです。  
 単一ファイル版から分離し、`basic agent + skills loader` に絞った構成にしています。
@@ -29,30 +29,30 @@ OpenAI互換APIを使う、最小構成のターミナル向けコーディン�
 
 1. 環境変数
 2. CLI引数
-3. `~/.config/tiny-agent/config`
+3. `~/.config/quiet-ai/config`
 
 優先順位は `CLI引数 > 環境変数 > configファイル > デフォルト値` です。
 
 初回起動時には設定ディレクトリと状態保存ディレクトリを自動作成します。
 
-- 設定ディレクトリ: `~/.config/tiny-agent`
-- 状態保存ディレクトリ: `~/.local/state/tiny-agent`
-- セッション保存先: `~/.local/state/tiny-agent/sessions`
+- 設定ディレクトリ: `~/.config/quiet-ai`
+- 状態保存ディレクトリ: `~/.local/state/quiet-ai`
+- セッション保存先: `~/.local/state/quiet-ai/sessions`
 
-`config` ファイル本体は自動生成しません。必要な場合だけ `~/.config/tiny-agent/config` を手動で作成してください。
+`config` ファイル本体は自動生成しません。必要な場合だけ `~/.config/quiet-ai/config` を手動で作成してください。
 
 ### Environment Variables
 
 ```bash
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 export OPENAI_API_KEY="your-api-key"
-export TINY_AGENT_MODEL="gpt-4.1-mini"
-export TINY_AGENT_DEBUG="1"
+export QUIET_AI_MODEL="gpt-4.1-mini"
+export QUIET_AI_DEBUG="1"
 ```
 
 ### Config File
 
-`~/.config/tiny-agent/config`
+`~/.config/quiet-ai/config`
 
 ```ini
 OPENAI_BASE_URL=http://localhost:8000/v1
@@ -66,7 +66,7 @@ CONTEXT_WINDOW=32768
 ### CLI
 
 ```bash
-python3 tiny-agent.py --base-url http://localhost:8000/v1 --api-key your-api-key --model gpt-4.1-mini
+python3 quiet-ai.py --base-url http://localhost:8000/v1 --api-key your-api-key --model gpt-4.1-mini
 ```
 
 ## Usage
@@ -74,19 +74,19 @@ python3 tiny-agent.py --base-url http://localhost:8000/v1 --api-key your-api-key
 対話モード:
 
 ```bash
-python3 tiny-agent.py
+python3 quiet-ai.py
 ```
 
 one-shot:
 
 ```bash
-python3 tiny-agent.py -p "pwd を実行して"
+python3 quiet-ai.py -p "pwd を実行して"
 ```
 
 ヘルプ:
 
 ```bash
-python3 tiny-agent.py --help
+python3 quiet-ai.py --help
 ```
 
 ## Interactive Commands
@@ -106,8 +106,8 @@ python3 tiny-agent.py --help
 
 以下のディレクトリにある `*.md` を自動で読み込みます。
 
-- `~/.config/tiny-agent/skills/`
-- `.tiny-agent/skills/`
+- `~/.config/quiet-ai/skills/`
+- `.quiet-ai/skills/`
 - `./skills/`
 
 Skills はシステムプロンプトへ注入されます。
@@ -125,8 +125,8 @@ MODEL=gpt-4.1-mini
 ## Project Structure
 
 ```text
-tiny-agent.py
-tiny_agent/
+quiet-ai.py
+quiet_ai/
   app.py
   agent.py
   client.py
@@ -154,5 +154,5 @@ tiny_agent/
 構文確認:
 
 ```bash
-python3 -m py_compile tiny-agent.py tiny_agent/*.py tiny_agent/tools/*.py
+python3 -m py_compile quiet-ai.py quiet_ai/*.py quiet_ai/tools/*.py
 ```

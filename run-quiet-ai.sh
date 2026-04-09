@@ -19,4 +19,4 @@ if [[ -z "${OPENAI_API_KEY:-}" ]]; then
   exit 1
 fi
 
-exec python3 "$SCRIPT_DIR/tiny-agent.py" --base-url $OPENAI_BASE_URL --api-key $OPENAI_API_KEY --model $OPENAI_MODEL
+exec python3 "$SCRIPT_DIR/quiet-ai.py" --base-url $OPENAI_BASE_URL --api-key $OPENAI_API_KEY --model $OPENAI_MODEL

@@ -13,5 +13,5 @@ venv/
 .serena/
 .codex
 
-.tiny-agent/
+.quiet-ai/
 *.log

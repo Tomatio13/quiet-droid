@@ -26,7 +26,7 @@ MEDIA_TYPES = {
 
 
 def _is_protected_path(file_path):
-    protected = {"permissions.json", ".tiny-agent.json", "config.json"}
+    protected = {"permissions.json", ".quiet-ai.json", "config.json"}
     return os.path.basename(file_path) in protected
 
 

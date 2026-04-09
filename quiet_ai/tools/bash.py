@@ -107,7 +107,7 @@ class BashTool(Tool):
             if re.search(pattern, command, re.IGNORECASE):
                 return "Error: this command pattern is blocked for safety."
 
-        protected_names = {"permissions.json", ".tiny-agent.json", "config.json"}
+        protected_names = {"permissions.json", ".quiet-ai.json", "config.json"}
         write_indicators = (">", ">>", "tee ", "mv ", "cp ", "echo ", "cat ", "sed ", "dd ", "install ", "printf ", "perl ", "python", "ruby ", "bash -c", "sh -c", "ln ")
         command_lower = command.lower()
         for protected in protected_names:

@@ -38,7 +38,7 @@ def _get_vram_gb() -> int:
 
 
 class Config:
-    APP_NAME = "tiny-agent"
+    APP_NAME = "quiet-ai"
     DEFAULT_BASE_URL = "http://localhost:8000/v1"
     DEFAULT_MODEL = ""
     DEFAULT_MAX_TOKENS = 8192
@@ -93,10 +93,7 @@ class Config:
             self.config_dir = os.path.join(home, ".config", self.APP_NAME)
             self.state_dir = os.path.join(home, ".local", "state", self.APP_NAME)
 
-        self.config_file = os.path.join(self.config_dir, "config")
-        self.permissions_file = os.path.join(self.config_dir, "permissions.json")
-        self.sessions_dir = os.path.join(self.state_dir, "sessions")
-        self.history_file = os.path.join(self.state_dir, "history")
+        self._refresh_paths()
 
     def load(self, argv=None):
         self._load_config_file()
@@ -106,6 +103,12 @@ class Config:
         self._validate_ollama_host()
         self._ensure_dirs()
         return self
+
+    def _refresh_paths(self):
+        self.config_file = os.path.join(self.config_dir, "config")
+        self.permissions_file = os.path.join(self.config_dir, "permissions.json")
+        self.sessions_dir = os.path.join(self.state_dir, "sessions")
+        self.history_file = os.path.join(self.state_dir, "history")
 
     def _load_config_file(self):
         if not os.path.isfile(self.config_file) or os.path.islink(self.config_file):
@@ -155,9 +158,9 @@ class Config:
             self.base_url = os.environ["OLLAMA_HOST"]
         if os.environ.get("OPENAI_API_KEY"):
             self.api_key = os.environ["OPENAI_API_KEY"]
-        if os.environ.get("TINY_AGENT_MODEL"):
-            self.model = os.environ["TINY_AGENT_MODEL"]
-        if os.environ.get("TINY_AGENT_DEBUG") == "1":
+        if os.environ.get("QUIET_AI_MODEL"):
+            self.model = os.environ["QUIET_AI_MODEL"]
+        if os.environ.get("QUIET_AI_DEBUG") == "1":
             self.debug = True
 
     def _load_cli_args(self, argv=None):
@@ -169,7 +172,7 @@ class Config:
             else:
                 normalized.append(arg)
         parser = argparse.ArgumentParser(
-            prog="tiny-agent",
+            prog="quiet-ai",
             description="Coding agent powered by an OpenAI-compatible API",
         )
         parser.add_argument("-p", "--prompt", help="One-shot prompt (non-interactive)")
@@ -182,7 +185,7 @@ class Config:
         parser.add_argument("--max-tokens", type=int, help="Max output tokens")
         parser.add_argument("--temperature", type=float, help="Sampling temperature")
         parser.add_argument("--context-window", type=int, help="Context window size")
-        parser.add_argument("--version", action="version", version=f"tiny-agent {__version__}")
+        parser.add_argument("--version", action="version", version=f"Quiet-AI {__version__}")
         parser.add_argument("--dangerously-skip-permissions", action="store_true", help="Alias for -y")
         args = parser.parse_args(normalized)
 
