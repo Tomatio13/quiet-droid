@@ -11,7 +11,7 @@ if ([string]::IsNullOrWhiteSpace($env:OPENAI_BASE_URL)) {
 }
 
 & python3 `
-    (Join-Path $ScriptDir "quiet-ai.py") `
+    (Join-Path $ScriptDir "quiet-droid.py") `
     --base-url $env:OPENAI_BASE_URL `
     --api-key $env:OPENAI_API_KEY `
     --model $env:OPENAI_MODEL_ID `

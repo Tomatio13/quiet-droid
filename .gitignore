@@ -1,5 +1,8 @@
 __pycache__/
 *.py[cod]
+*.egg-info/
+build/
+dist/
 
 .pytest_cache/
 .mypy_cache/
@@ -13,5 +16,7 @@ venv/
 .serena/
 .codex
 
-.quiet-ai/
+.quiet-droid/
 *.log
+
+.omx/plans
