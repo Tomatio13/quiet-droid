@@ -17,11 +17,30 @@ except ImportError:
     HAS_READLINE = False
 
 
+SLASH_COMMAND_SPECS = [
+    ("/help", "Show this help"),
+    ("/exit", "Exit"),
+    ("/quit", "Exit"),
+    ("/q", "Exit"),
+    ("/clear", "Clear conversation"),
+    ("/model", "Show or switch model"),
+    ("/models", "List installed models"),
+    ("/status", "Session info"),
+    ("/save", "Save session"),
+    ("/compact", "Compress context"),
+    ("/yes", "Auto-approve ON"),
+    ("/no", "Auto-approve OFF"),
+    ("/debug", "Toggle debug mode"),
+]
+SLASH_COMMANDS = [command for command, _ in SLASH_COMMAND_SPECS]
+
+
 class TUI:
     _ANSI_RE = re.compile(r"\033\[[0-9;]*[a-zA-Z]")
 
     def __init__(self, config):
         self.config = config
+        self.skill_names = []
         self._spinner_stop = threading.Event()
         self._spinner_thread = None
         self.is_interactive = sys.stdin.isatty() and sys.stdout.isatty()
@@ -31,10 +50,9 @@ class TUI:
                 if os.path.isfile(config.history_file):
                     readline.read_history_file(config.history_file)
                 readline.set_history_length(1000)
-                slash_commands = ["/help", "/exit", "/quit", "/q", "/clear", "/model", "/models", "/status", "/save", "/compact", "/yes", "/no", "/debug"]
 
                 def completer(text, state):
-                    options = [cmd for cmd in slash_commands if cmd.startswith(text)] if text.startswith("/") else []
+                    options = self.get_completion_candidates(text)
                     return options[state] if state < len(options) else None
 
                 readline.set_completer(completer)
@@ -42,6 +60,17 @@ class TUI:
                 readline.parse_and_bind("tab: complete")
             except Exception:
                 pass
+
+    def set_skill_names(self, skill_names):
+        self.skill_names = sorted(set(skill_names))
+
+    def get_completion_candidates(self, text):
+        if text.startswith("/"):
+            return [cmd for cmd in SLASH_COMMANDS if cmd.startswith(text)]
+        if text.startswith("$"):
+            skill_commands = [f"${name}" for name in self.skill_names]
+            return [cmd for cmd in skill_commands if cmd.startswith(text)]
+        return []
 
     def _detect_cjk_locale(self):
         try:
@@ -300,22 +329,30 @@ class TUI:
         _c198 = ansi("\033[38;5;198m")
         sep = "━" * min(36, get_terminal_width() - 4)
         ime_hint = f"\n  {C.DIM}IME: 空行で送信 / \"\"\" で複数行{C.RESET}" if self._is_cjk else ""
+        command_lines = "\n".join(
+            f"  {_c198}{cmd:<18}{C.RESET} {desc}" for cmd, desc in SLASH_COMMAND_SPECS
+        )
         print(f"""
   {_c51}━━ Commands {sep[10:]}{C.RESET}
-  {_c198}/help{C.RESET}              Show this help
-  {_c198}/exit{C.RESET}              Exit
-  {_c198}/clear{C.RESET}             Clear conversation
-  {_c198}/status{C.RESET}            Session info
-  {_c198}/save{C.RESET}              Save session
-  {_c198}/compact{C.RESET}           Compress context
-  {_c198}/model{C.RESET}             Show or switch model
-  {_c198}/yes{C.RESET}               Auto-approve ON
-  {_c198}/no{C.RESET}                Auto-approve OFF
-  {_c198}/debug{C.RESET}             Toggle debug mode
+{command_lines}
   {_c198}\"\"\"{C.RESET}                Multi-line input
+  {C.DIM}/ + Enter      show commands / Tab for completion{C.RESET}
+  {C.DIM}$ + Enter      show skills / Tab for completion{C.RESET}
   {_c51}━━ Tools {sep[8:]}{C.RESET}
   {_c87}Bash, Read, Write, Edit, Glob, Grep, SubAgent, ParallelAgents{C.RESET}{ime_hint}
 """)
+
+    def show_skill_list(self):
+        _c51 = ansi("\033[38;5;51m")
+        _c87 = ansi("\033[38;5;87m")
+        if not self.skill_names:
+            print(f"\n  {_c51}━━ Skills ━━━━━━━━━━━━━━━━━━━{C.RESET}")
+            print(f"  {C.DIM}No skills loaded.{C.RESET}")
+            return
+        skills_text = ", ".join(f"${name}" for name in self.skill_names)
+        print(f"\n  {_c51}━━ Skills ━━━━━━━━━━━━━━━━━━━{C.RESET}")
+        print(f"  {_c87}{skills_text}{C.RESET}")
+        print(f"  {C.DIM}Type $name to invoke a skill hint in your prompt. Tab completes names.{C.RESET}")
 
     def show_status(self, session, config):
         tokens = session.get_token_estimate()

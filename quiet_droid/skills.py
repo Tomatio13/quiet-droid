@@ -1,6 +1,22 @@
 import os
 
 
+def _iter_skill_files(skill_dir):
+    try:
+        entries = os.listdir(skill_dir)
+    except OSError:
+        return
+    for entry in entries:
+        path = os.path.join(skill_dir, entry)
+        if entry.endswith(".md") and os.path.isfile(path):
+            yield entry[:-3], path
+            continue
+        if os.path.isdir(path):
+            skill_md = os.path.join(path, "SKILL.md")
+            if os.path.isfile(skill_md):
+                yield entry, skill_md
+
+
 def load_skills(config):
     skills = {}
     skill_dirs = [
@@ -11,20 +27,12 @@ def load_skills(config):
     for skill_dir in skill_dirs:
         if not os.path.isdir(skill_dir):
             continue
-        try:
-            for entry in os.listdir(skill_dir):
-                if not entry.endswith(".md"):
+        for skill_name, path in _iter_skill_files(skill_dir):
+            try:
+                if os.path.getsize(path) > 50000:
                     continue
-                path = os.path.join(skill_dir, entry)
-                if os.path.islink(path) or not os.path.isfile(path):
-                    continue
-                try:
-                    if os.path.getsize(path) > 50000:
-                        continue
-                    with open(path, encoding="utf-8") as f:
-                        skills[entry[:-3]] = f.read(50000)
-                except (OSError, UnicodeDecodeError):
-                    pass
-        except OSError:
-            pass
+                with open(path, encoding="utf-8") as f:
+                    skills[skill_name] = f.read(50000)
+            except (OSError, UnicodeDecodeError):
+                pass
     return skills

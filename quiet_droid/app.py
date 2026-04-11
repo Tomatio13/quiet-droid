@@ -61,6 +61,7 @@ def main():
 
     system_prompt = build_system_prompt(config)
     skills = load_skills(config)
+    tui.set_skill_names(skills.keys())
     if skills:
         system_prompt += "\n# Loaded Skills\n"
         for skill_name, skill_content in skills.items():
@@ -112,6 +113,14 @@ def main():
                     duration = f"{mins}m {secs}s" if mins else f"{secs}s"
                     print(f"\n  {ansi(chr(27)+'[38;5;51m')}✦ Session saved. Duration: {duration}.{C.RESET}")
                     break
+
+                if user_input == "/":
+                    tui.show_help()
+                    continue
+
+                if user_input == "$":
+                    tui.show_skill_list()
+                    continue
 
                 if user_input.startswith("/"):
                     cmd = user_input.split()[0].lower()

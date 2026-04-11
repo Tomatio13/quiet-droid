@@ -226,6 +226,8 @@ qd --help
 - `/debug`
 
 通常入力では `exit` / `quit` / `bye` でも終了できます。
+`Tab` で `/` コマンド補完ができます。`/` だけを入力して Enter するとコマンド一覧を表示します。
+`Tab` で `$skill` 補完ができます。`$` だけを入力して Enter すると、ロード済み Skill 一覧を表示します。
 
 ## 🧩 Skills
 
@@ -236,6 +238,7 @@ qd --help
 - `./skills/`
 
 Skills はシステムプロンプトへ注入されます。
+対話中に `$plan` のように Skill 名を入力しやすいよう、ロード済み Skill 名は Tab 補完と一覧表示に使われます。
 
 ## 📜 Project Instructions
 
