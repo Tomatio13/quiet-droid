@@ -15,13 +15,14 @@ class Agent:
     MAX_RETRIES = 2
     MAX_SAME_TOOL_REPEAT = 3
 
-    def __init__(self, config, client, registry, permissions, session, tui):
+    def __init__(self, config, client, registry, permissions, session, tui, hooks=None):
         self.config = config
         self.client = client
         self.registry = registry
         self.permissions = permissions
         self.session = session
         self.tui = tui
+        self.hooks = hooks
         self._interrupted = threading.Event()
 
     @staticmethod
@@ -41,6 +42,8 @@ class Agent:
         return []
 
     def run(self, user_input):
+        if self.hooks:
+            self.hooks.emit("UserPromptSubmit", {"prompt": user_input})
         parallel_tasks = self._detect_parallel_tasks(user_input)
         if len(parallel_tasks) >= 2:
             tool = self.registry.get("ParallelAgents")
@@ -48,6 +51,8 @@ class Agent:
                 self.session.add_user_message(user_input)
                 result = tool.execute({"tasks": [{"prompt": task, "max_turns": 10} for task in parallel_tasks]})
                 self.session.add_assistant_message(result)
+                if self.hooks:
+                    self.hooks.emit("Stop", {"stop_reason": "parallel_agents", "response": result[:4000]})
                 print(f"\n{C.BBLUE}assistant{C.RESET}: ", end="")
                 self.tui._render_markdown(result)
                 print()
@@ -115,6 +120,8 @@ class Agent:
 
                 self.session.add_assistant_message(text, tool_calls if tool_calls else None)
                 if not tool_calls:
+                    if self.hooks:
+                        self.hooks.emit("Stop", {"stop_reason": "assistant_response", "response": (text or "")[:4000]})
                     break
 
                 def normalize_args(raw):
@@ -168,8 +175,20 @@ class Agent:
                         results.append(ToolResult(tc_id, f"Error: unknown tool '{tool_name}'", True))
                         continue
                     tool_name = tool.name
+                    hook_decision = self.hooks.evaluate_pre_tool_use(tool_name, tool_params) if self.hooks else None
+                    if hook_decision and hook_decision.updated_input:
+                        tool_params = hook_decision.updated_input
                     self.tui.show_tool_call(tool_name, tool_params)
-                    if not self.permissions.check(tool_name, tool_params, self.tui):
+                    if hook_decision and hook_decision.decision == "deny":
+                        message = hook_decision.reason or "Permission denied by hook. Do not retry this operation."
+                        if self.hooks:
+                            self.hooks.emit("PermissionDenied", {"tool_name": tool_name, "tool_input": dict(tool_params)}, matcher=tool_name)
+                        results.append(ToolResult(tc_id, message, True))
+                        self.tui.show_tool_result(tool_name, message, True)
+                        continue
+                    force_ask = bool(hook_decision and hook_decision.decision == "ask")
+                    ask_reason = hook_decision.reason if hook_decision else ""
+                    if not self.permissions.check(tool_name, tool_params, self.tui, force_ask=force_ask, ask_reason=ask_reason):
                         results.append(ToolResult(tc_id, "Permission denied by user. Do not retry this operation.", True))
                         self.tui.show_tool_result(tool_name, "Permission denied", True)
                         continue
@@ -188,11 +207,34 @@ class Agent:
                         if is_long_op:
                             self.tui.stop_spinner()
                         is_error = isinstance(output, str) and (output.startswith("Error:") or output.startswith("Error -"))
+                        if self.hooks:
+                            event_name = "PostToolUseFailure" if is_error else "PostToolUse"
+                            self.hooks.emit(
+                                event_name,
+                                {
+                                    "tool_name": tool_name,
+                                    "tool_input": dict(tool_params),
+                                    "tool_response": str(output),
+                                    "duration_seconds": round(duration, 3),
+                                },
+                                matcher=tool_name,
+                            )
                         self.tui.show_tool_result(tool_name, output, is_error=is_error, duration=duration, params=tool_params)
                         results.append(ToolResult(tc_id, output, is_error))
                     except KeyboardInterrupt:
                         self.tui.stop_spinner()
                         duration = time.time() - tool_started
+                        if self.hooks:
+                            self.hooks.emit(
+                                "PostToolUseFailure",
+                                {
+                                    "tool_name": tool_name,
+                                    "tool_input": dict(tool_params),
+                                    "tool_response": "Interrupted by user",
+                                    "duration_seconds": round(duration, 3),
+                                },
+                                matcher=tool_name,
+                            )
                         results.append(ToolResult(tc_id, "Interrupted by user", True))
                         self.tui.show_tool_result(tool_name, "Interrupted", True, duration=duration, params=tool_params)
                         self._interrupted.set()
@@ -201,6 +243,17 @@ class Agent:
                         self.tui.stop_spinner()
                         duration = time.time() - tool_started
                         error_msg = f"Tool error: {exc}"
+                        if self.hooks:
+                            self.hooks.emit(
+                                "PostToolUseFailure",
+                                {
+                                    "tool_name": tool_name,
+                                    "tool_input": dict(tool_params),
+                                    "tool_response": error_msg,
+                                    "duration_seconds": round(duration, 3),
+                                },
+                                matcher=tool_name,
+                            )
                         self.tui.show_tool_result(tool_name, error_msg, True, duration=duration, params=tool_params)
                         results.append(ToolResult(tc_id, error_msg, True))
 

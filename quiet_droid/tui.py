@@ -271,7 +271,7 @@ class TUI:
         print()
         return "".join(text_parts), []
 
-    def ask_permission(self, tool_name, params):
+    def ask_permission(self, tool_name, params, reason=""):
         summary = tool_name
         if tool_name == "Bash":
             summary = params.get("command", "")
@@ -280,6 +280,8 @@ class TUI:
         print(f"\n{C.YELLOW}Permission required:{C.RESET} {tool_name}")
         if summary:
             print(f"  {C.DIM}{truncate_to_display_width(summary, 120)}{C.RESET}")
+        if reason:
+            print(f"  {C.DIM}{truncate_to_display_width(reason, 120)}{C.RESET}")
         while True:
             answer = input(f"{C.CYAN}Allow? [y]es / [n]o / [a]llow tool / [Y]es mode: {C.RESET}").strip()
             lowered = answer.lower()

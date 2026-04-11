@@ -37,8 +37,9 @@ class PermissionMgr:
     ASK_TOOLS = {"Bash", "Write", "Edit", "SubAgent", "ParallelAgents"}
     _ALWAYS_CONFIRM_PATTERNS = [r"\brm\s+-rf\s+/", r"\bsudo\b", r"\bmkfs\b", r"\bdd\b.*\bof=/dev/"]
 
-    def __init__(self, config):
+    def __init__(self, config, hooks=None):
         self.yes_mode = config.yes_mode
+        self._hooks = hooks
         self.rules = {}
         self._session_allows = set()
         self._session_denies = set()
@@ -60,17 +61,25 @@ class PermissionMgr:
         except (OSError, json.JSONDecodeError):
             pass
 
-    def check(self, tool_name, params, tui=None):
+    def _emit_permission_denied(self, tool_name, params):
+        if self._hooks:
+            self._hooks.emit("PermissionDenied", {"tool_name": tool_name, "tool_input": dict(params)}, matcher=tool_name)
+
+    def check(self, tool_name, params, tui=None, force_ask=False, ask_reason=""):
         if tool_name in self._session_denies:
+            self._emit_permission_denied(tool_name, params)
             return False
 
-        if tool_name == "Bash" and self.yes_mode:
+        if tool_name == "Bash" and self.yes_mode and not force_ask:
             command = params.get("command", "")
             for pattern in self._ALWAYS_CONFIRM_PATTERNS:
                 if re.search(pattern, command, re.IGNORECASE):
                     if not tui:
+                        self._emit_permission_denied(tool_name, params)
                         return False
-                    result = tui.ask_permission(tool_name, params)
+                    if self._hooks:
+                        self._hooks.emit("PermissionRequest", {"tool_name": tool_name, "tool_input": dict(params)}, matcher=tool_name)
+                    result = tui.ask_permission(tool_name, params, reason=ask_reason)
                     if result == "yes_mode":
                         self.yes_mode = True
                         return True
@@ -78,22 +87,29 @@ class PermissionMgr:
                         return True
                     if result == "deny_all":
                         self._session_denies.add(tool_name)
+                        self._emit_permission_denied(tool_name, params)
                         return False
+                    if result is False:
+                        self._emit_permission_denied(tool_name, params)
                     return result
-        if self.yes_mode:
+        if self.yes_mode and not force_ask:
             return True
         if tool_name in self.SAFE_TOOLS:
             return True
         if self.rules.get(tool_name) == "allow":
             return True
         if self.rules.get(tool_name) == "deny":
+            self._emit_permission_denied(tool_name, params)
             return False
         if tool_name in self._session_allows:
             return True
         if tool_name not in self.SAFE_TOOLS and tool_name not in self.ASK_TOOLS:
+            self._emit_permission_denied(tool_name, params)
             return False if not tui else False
         if tui:
-            result = tui.ask_permission(tool_name, params)
+            if self._hooks:
+                self._hooks.emit("PermissionRequest", {"tool_name": tool_name, "tool_input": dict(params)}, matcher=tool_name)
+            result = tui.ask_permission(tool_name, params, reason=ask_reason)
             if result == "yes_mode":
                 self.yes_mode = True
                 return True
@@ -102,6 +118,10 @@ class PermissionMgr:
                 return True
             if result == "deny_all":
                 self._session_denies.add(tool_name)
+                self._emit_permission_denied(tool_name, params)
                 return False
+            if result is False:
+                self._emit_permission_denied(tool_name, params)
             return result
+        self._emit_permission_denied(tool_name, params)
         return False

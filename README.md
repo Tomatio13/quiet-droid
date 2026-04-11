@@ -240,6 +240,87 @@ Skills はシステムプロンプトへ注入されます。
 見つかったファイル内容はシステムプロンプトへ順に注入されます。`AGENTS.md` に運用ルールや出力言語、作業方針を書いておく運用に対応しています。
 同一階層に複数あっても、各ディレクトリでは最初に見つかった1ファイルのみを採用します。
 
+## 🪝 Hooks
+
+最小実装として `command` 型フックをサポートしています。設定ファイルは次の順で読み込みます。
+
+- `~/.config/quiet-droid/hooks.json`
+- `./.quiet-droid/hooks.json`
+
+Claude Code の公式ドキュメント:
+
+- https://code.claude.com/docs/ja/hooks
+
+Claude Code フック一覧と `quiet-droid` の対応状況:
+
+| Event | Status | Notes |
+| --- | --- | --- |
+| `SessionStart` | Supported | 対応済み |
+| `InstructionsLoaded` | Not supported | instruction 読み込み時イベントは未実装 |
+| `UserPromptSubmit` | Supported | 対応済み |
+| `PreToolUse` | Supported | `allow` / `ask` / `deny` をサポート |
+| `PermissionRequest` | Supported | 既存 permission UI と連動 |
+| `PostToolUse` | Supported | 成功時に発火 |
+| `PostToolUseFailure` | Supported | エラー時に発火 |
+| `PermissionDenied` | Supported | deny ルールや user deny で発火 |
+| `Notification` | Not supported | 通知抽象が未実装 |
+| `SubagentStart` | Supported | `SubAgent` 実行開始時 |
+| `SubagentStop` | Supported | `SubAgent` 実行終了時 |
+| `TaskCreated` | Not supported | 並列タスクはあるが専用イベントは未実装 |
+| `TaskCompleted` | Not supported | 並列タスクはあるが専用イベントは未実装 |
+| `Stop` | Supported | assistant の最終応答で発火 |
+| `StopFailure` | Not supported | API エラー終端イベントは未実装 |
+| `TeammateIdle` | Not supported | team lifecycle 未実装 |
+| `ConfigChange` | Not supported | 動的 reload 未実装 |
+| `CwdChanged` | Not supported | persistent cwd モデル未実装 |
+| `FileChanged` | Not supported | watcher 未実装 |
+| `WorktreeCreate` | Not supported | worktree 機能未実装 |
+| `WorktreeRemove` | Not supported | worktree 機能未実装 |
+| `PreCompact` | Supported | compact 前に発火 |
+| `PostCompact` | Supported | compact 後に発火 |
+| `SessionEnd` | Supported | 対応済み |
+| `Elicitation` | Not supported | MCP elicitation 未実装 |
+| `ElicitationResult` | Not supported | MCP elicitation 未実装 |
+
+実装済みのフックタイプ:
+
+| Hook Type | Status | Notes |
+| --- | --- | --- |
+| `command` | Supported | 最小実装 |
+| `http` | Not supported | 未実装 |
+| `prompt` | Not supported | 未実装 |
+| `agent` | Not supported | 未実装 |
+
+最小例:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "matcher": "Bash",
+        "command": "python3 .quiet-droid/hooks/block_rm.py"
+      }
+    ]
+  }
+}
+```
+
+フックにはイベント JSON が stdin で渡されます。`PreToolUse` では次のような JSON を stdout に返すと拒否できます。
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "blocked by local hook"
+  }
+}
+```
+
+`Stop` は「assistant が最終応答を返してターンが完了したとき」に発火します。`command` 以外のフックタイプと、Claude Code の高度な lifecycle / watcher 系イベントはまだ未対応です。
+
 ## 📝 Config Example
 
 最小構成の例:
@@ -288,4 +369,5 @@ quiet_droid/
 
 ```bash
 python3 -m py_compile quiet-droid.py quiet_droid/*.py quiet_droid/tools/*.py
+python3 -m unittest discover -s tests -v
 ```

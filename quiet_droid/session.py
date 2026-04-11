@@ -15,6 +15,7 @@ class Session:
         self.system_prompt = system_prompt
         self.messages = []
         self._client = None
+        self._hooks = None
         raw_id = config.session_id or (datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6])
         self.session_id = re.sub(r"[^A-Za-z0-9_\-]", "", raw_id)[:64] or (
             datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
@@ -25,6 +26,9 @@ class Session:
 
     def set_client(self, client):
         self._client = client
+
+    def set_hooks(self, hooks):
+        self._hooks = hooks
 
     @staticmethod
     def _estimate_tokens(text):
@@ -181,6 +185,10 @@ class Session:
             return
         if not force and len(self.messages) == self._last_compact_msg_count:
             return
+        before_tokens = self.get_token_estimate()
+        before_messages = len(self.messages)
+        if self._hooks:
+            self._hooks.emit("PreCompact", {"before_tokens": before_tokens, "message_count": before_messages, "forced": bool(force)})
         self._last_compact_msg_count = len(self.messages)
         preserve_count = min(30, len(self.messages))
         cutoff = len(self.messages) - preserve_count
@@ -221,6 +229,17 @@ class Session:
                         self.messages[idx] = {**msg, "content": content[:200] + "\n...(truncated)...\n" + content[-200:]}
             self._recalculate_tokens()
         self._just_compacted = True
+        if self._hooks:
+            self._hooks.emit(
+                "PostCompact",
+                {
+                    "before_tokens": before_tokens,
+                    "after_tokens": self.get_token_estimate(),
+                    "before_message_count": before_messages,
+                    "after_message_count": len(self.messages),
+                    "forced": bool(force),
+                },
+            )
 
     def save(self):
         if not self.messages:

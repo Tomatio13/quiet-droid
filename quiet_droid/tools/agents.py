@@ -19,11 +19,12 @@ class SubAgentTool(Tool):
     WRITE_TOOLS = frozenset({"Bash", "Write", "Edit"})
     HARD_MAX_TURNS = 20
 
-    def __init__(self, config, client, registry, permissions=None):
+    def __init__(self, config, client, registry, permissions=None, hooks=None):
         self._config = config
         self._client = client
         self._registry = registry
         self._permissions = permissions
+        self._hooks = hooks
 
     @property
     def parameters(self):
@@ -72,6 +73,8 @@ class SubAgentTool(Tool):
         prompt = params.get("prompt", "").strip()
         if not prompt:
             return "Error: prompt is required"
+        if self._hooks:
+            self._hooks.emit("SubagentStart", {"prompt": prompt[:1000]})
 
         try:
             max_turns = int(params.get("max_turns", 10))
@@ -170,17 +173,27 @@ class SubAgentTool(Tool):
 
         if len(result_text) > 20000:
             result_text = result_text[:20000] + "\n...(truncated)"
+        if self._hooks:
+            self._hooks.emit(
+                "SubagentStop",
+                {
+                    "prompt": prompt[:1000],
+                    "duration_seconds": round(elapsed, 3),
+                    "result_preview": result_text[:1000],
+                },
+            )
         return result_text
 
 
 class MultiAgentCoordinator:
     MAX_PARALLEL = 4
 
-    def __init__(self, config, client, registry, permissions):
+    def __init__(self, config, client, registry, permissions, hooks=None):
         self._config = config
         self._client = client
         self._registry = registry
         self._permissions = permissions
+        self._hooks = hooks
 
     def run_parallel(self, tasks):
         tasks = tasks[: self.MAX_PARALLEL]
@@ -189,7 +202,7 @@ class MultiAgentCoordinator:
         def run_one(idx, task):
             started = time.time()
             try:
-                subagent = SubAgentTool(self._config, self._client, self._registry, self._permissions)
+                subagent = SubAgentTool(self._config, self._client, self._registry, self._permissions, self._hooks)
                 result = subagent.execute(task)
                 results[idx] = {
                     "prompt": task.get("prompt", "")[:100],
