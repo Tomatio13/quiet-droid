@@ -84,7 +84,7 @@ class Session:
         self._token_estimate += self._estimate_tokens(text)
         self._enforce_max_messages()
 
-    def add_assistant_message(self, text, tool_calls=None):
+    def add_droid_message(self, text, tool_calls=None):
         msg = {"role": "assistant", "content": text if text else None}
         if tool_calls:
             msg["tool_calls"] = tool_calls
@@ -92,6 +92,9 @@ class Session:
         self._token_estimate += self._estimate_tokens(text or "")
         if tool_calls:
             self._token_estimate += len(json.dumps(tool_calls, ensure_ascii=False)) // 4
+
+    def add_assistant_message(self, text, tool_calls=None):
+        self.add_droid_message(text, tool_calls)
 
     @staticmethod
     def _parse_image_marker(output):

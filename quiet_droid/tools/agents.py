@@ -40,7 +40,7 @@ class SubAgentTool(Tool):
 
     def _build_sub_system_prompt(self):
         return (
-            "You are a sub-agent assistant. Complete the given task using the available tools. "
+            "You are a sub-agent droid. Complete the given task using the available tools. "
             "Be thorough but concise. Do not ask follow-up questions. "
             "When you have enough information, provide a clear final answer.\n"
             f"Working directory: {self._config.cwd}\n"

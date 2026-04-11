@@ -50,10 +50,10 @@ class Agent:
             if tool:
                 self.session.add_user_message(user_input)
                 result = tool.execute({"tasks": [{"prompt": task, "max_turns": 10} for task in parallel_tasks]})
-                self.session.add_assistant_message(result)
+                self.session.add_droid_message(result)
                 if self.hooks:
                     self.hooks.emit("Stop", {"stop_reason": "parallel_agents", "response": result[:4000]})
-                print(f"\n{C.BBLUE}assistant{C.RESET}: ", end="")
+                print(f"\n{C.BBLUE}droid{C.RESET}: ", end="")
                 self.tui._render_markdown(result)
                 print()
                 return
@@ -118,10 +118,10 @@ class Agent:
                     time.sleep(empty_retries * 0.5)
                     continue
 
-                self.session.add_assistant_message(text, tool_calls if tool_calls else None)
+                self.session.add_droid_message(text, tool_calls if tool_calls else None)
                 if not tool_calls:
                     if self.hooks:
-                        self.hooks.emit("Stop", {"stop_reason": "assistant_response", "response": (text or "")[:4000]})
+                        self.hooks.emit("Stop", {"stop_reason": "droid_response", "response": (text or "")[:4000]})
                     break
 
                 def normalize_args(raw):
@@ -276,7 +276,7 @@ class Agent:
             except KeyboardInterrupt:
                 self.tui.stop_spinner()
                 if text:
-                    self.session.add_assistant_message(text)
+                    self.session.add_droid_message(text)
                 print(f"\n{C.YELLOW}Interrupted.{C.RESET}")
                 self._interrupted.set()
                 break

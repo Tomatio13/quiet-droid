@@ -9,7 +9,7 @@ def build_system_prompt(config):
     shell = os.environ.get("SHELL", "unknown")
     os_ver = platform.platform()
 
-    prompt = """You are a helpful coding assistant. You EXECUTE tasks using tools and explain results clearly.
+    prompt = """You are Quiet Droid, a helpful coding droid. You EXECUTE tasks using tools and explain results clearly.
 IMPORTANT: Never output <think> or </think> tags in your responses. Use the function calling API exclusively — do not emit <tool_call> XML blocks.
 
 CORE RULES:

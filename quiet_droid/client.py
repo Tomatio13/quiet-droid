@@ -10,10 +10,18 @@ class OpenAICompatClient:
         self.config = config
         self.base_url = config.base_url.rstrip("/")
 
-    def _build_url(self, path):
+    def _uses_non_v1_chat_endpoint(self, model):
+        return isinstance(model, str) and model.startswith("glm-")
+
+    def allows_chat_without_models_check(self, model):
+        return self._uses_non_v1_chat_endpoint(model)
+
+    def _build_url(self, path, model=None):
         parsed = urllib.parse.urlparse(self.base_url)
         base_path = parsed.path.rstrip("/")
-        if base_path.endswith("/v1"):
+        if path == "/chat/completions" and self._uses_non_v1_chat_endpoint(model):
+            full_path = base_path + path
+        elif base_path.endswith("/v1"):
             full_path = base_path + path
         else:
             full_path = base_path + "/v1" + path
@@ -76,7 +84,7 @@ class OpenAICompatClient:
         }
         if tools:
             payload["tools"] = tools
-        request = self._make_request(self._build_url("/chat/completions"), payload)
+        request = self._make_request(self._build_url("/chat/completions", model=model), payload)
         response = urllib.request.urlopen(request, timeout=3600)
         if not stream:
             try:

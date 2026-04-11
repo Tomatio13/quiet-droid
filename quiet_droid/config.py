@@ -96,8 +96,8 @@ class Config:
         self._refresh_paths()
 
     def load(self, argv=None):
-        self._load_config_file()
         self._load_env()
+        self._load_config_file()
         self._load_cli_args(argv)
         self._auto_detect_model()
         self._validate_ollama_host()

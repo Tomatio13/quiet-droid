@@ -20,6 +20,7 @@
 ## ✨ Features
 
 - OpenAI互換APIの `/v1/chat/completions` を利用
+  - ただし `model` が `glm-` で始まる場合は `/chat/completions` を利用
 - 基本ツールのみ搭載
   - `Bash`
   - `Read`
@@ -119,7 +120,7 @@ quiet-droid --help
 2. CLI引数
 3. `~/.config/quiet-droid/config`
 
-優先順位は `CLI引数 > 環境変数 > configファイル > デフォルト値` です。
+優先順位は `CLI引数 > configファイル > 環境変数 > デフォルト値` です。
 
 初回起動時には設定ディレクトリと状態保存ディレクトリを自動作成します。
 
@@ -152,6 +153,13 @@ export QUIET_DROID_DEBUG="1"
 ```
 
 互換目的で `OLLAMA_HOST` も `OPENAI_BASE_URL` の代替として利用できます。
+
+`z.ai` の `glm-*` モデルを使う場合は、`OPENAI_BASE_URL` に `/v1` ではなく API ルートを指定してください。
+
+```bash
+export OPENAI_BASE_URL="https://api.z.ai/api/paas/v4"
+export QUIET_DROID_MODEL="glm-4.5"
+```
 
 ### Config File
 
@@ -268,7 +276,7 @@ Claude Code フック一覧と `quiet-droid` の対応状況:
 | `SubagentStop` | Supported | `SubAgent` 実行終了時 |
 | `TaskCreated` | Not supported | 並列タスクはあるが専用イベントは未実装 |
 | `TaskCompleted` | Not supported | 並列タスクはあるが専用イベントは未実装 |
-| `Stop` | Supported | assistant の最終応答で発火 |
+| `Stop` | Supported | droid の最終応答で発火 |
 | `StopFailure` | Not supported | API エラー終端イベントは未実装 |
 | `TeammateIdle` | Not supported | team lifecycle 未実装 |
 | `ConfigChange` | Not supported | 動的 reload 未実装 |
@@ -319,7 +327,7 @@ Claude Code フック一覧と `quiet-droid` の対応状況:
 }
 ```
 
-`Stop` は「assistant が最終応答を返してターンが完了したとき」に発火します。`command` 以外のフックタイプと、Claude Code の高度な lifecycle / watcher 系イベントはまだ未対応です。
+`Stop` は「droid が最終応答を返してターンが完了したとき」に発火します。`command` 以外のフックタイプと、Claude Code の高度な lifecycle / watcher 系イベントはまだ未対応です。
 
 ## 📝 Config Example
 

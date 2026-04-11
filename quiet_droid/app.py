@@ -42,10 +42,14 @@ def main():
     client = OpenAICompatClient(config)
     ok, models = client.check_connection()
     if not ok:
-        print(f"\n{C.RED}OpenAI-compatible API に接続できませんでした。{C.RESET}")
-        print(f"{C.DIM}Base URL: {config.base_url}{C.RESET}")
-        if sys.exit:
-            sys.exit(1)
+        if client.allows_chat_without_models_check(config.model):
+            print(f"\n{C.YELLOW}/models の接続確認に失敗しましたが、{config.model} は chat/completions を直接試します。{C.RESET}")
+            print(f"{C.DIM}Base URL: {config.base_url}{C.RESET}")
+        else:
+            print(f"\n{C.RED}OpenAI-compatible API に接続できませんでした。{C.RESET}")
+            print(f"{C.DIM}Base URL: {config.base_url}{C.RESET}")
+            if sys.exit:
+                sys.exit(1)
 
     model_ok = client.check_model(config.model, available_models=models)
     if not model_ok:
