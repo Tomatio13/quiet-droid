@@ -7,6 +7,7 @@ import urllib.error
 import uuid
 
 from .terminal import C, ansi
+from .skills import inject_skill_context
 from .tools import ToolResult
 
 
@@ -15,7 +16,7 @@ class Agent:
     MAX_RETRIES = 2
     MAX_SAME_TOOL_REPEAT = 3
 
-    def __init__(self, config, client, registry, permissions, session, tui, hooks=None):
+    def __init__(self, config, client, registry, permissions, session, tui, hooks=None, skills=None):
         self.config = config
         self.client = client
         self.registry = registry
@@ -23,6 +24,7 @@ class Agent:
         self.session = session
         self.tui = tui
         self.hooks = hooks
+        self.skills = skills or {}
         self._interrupted = threading.Event()
 
     @staticmethod
@@ -58,7 +60,8 @@ class Agent:
                 print()
                 return
 
-        self.session.add_user_message(user_input)
+        effective_input = inject_skill_context(user_input, self.skills)
+        self.session.add_user_message(effective_input)
         self._interrupted.clear()
         recent_tool_calls = []
         empty_retries = 0

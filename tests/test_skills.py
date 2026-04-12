@@ -2,7 +2,7 @@ import os
 import tempfile
 import unittest
 
-from quiet_droid.skills import load_skills
+from quiet_droid.skills import extract_referenced_skills, inject_skill_context, load_skills
 
 
 class DummyConfig:
@@ -41,6 +41,33 @@ class SkillsTests(unittest.TestCase):
 
         skills = load_skills(self.config)
         self.assertEqual(skills["plan"], "linked body")
+
+    def test_extracts_only_loaded_referenced_skills_in_order(self):
+        skills = {"sar-analyze": "analyze body", "plan": "plan body"}
+
+        referenced = extract_referenced_skills(
+            "$sar-analyze my_capture.bin を見て。そのあと $plan して $sar-analyze も再利用",
+            skills,
+        )
+
+        self.assertEqual(referenced, ["sar-analyze", "plan"])
+
+    def test_injects_referenced_skill_content_into_turn_context(self):
+        skills = {"sar-analyze": "Use ./scripts/analyze-sar.sh first."}
+
+        injected = inject_skill_context("$sar-analyze my_capture.binを分析して", skills)
+
+        self.assertIn("$sar-analyze my_capture.binを分析して", injected)
+        self.assertIn("[Invoked Skills]", injected)
+        self.assertIn("## Skill: sar-analyze", injected)
+        self.assertIn("Use ./scripts/analyze-sar.sh first.", injected)
+
+    def test_does_not_inject_when_no_loaded_skill_is_referenced(self):
+        user_input = "$missing test"
+
+        injected = inject_skill_context(user_input, {"plan": "body"})
+
+        self.assertEqual(injected, user_input)
 
 
 if __name__ == "__main__":

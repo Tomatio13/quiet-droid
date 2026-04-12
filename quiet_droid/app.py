@@ -79,7 +79,7 @@ def main():
     registry.register(SubAgentTool(config, client, registry, permissions, hooks))
     coordinator = MultiAgentCoordinator(config, client, registry, permissions, hooks)
     registry.register(ParallelAgentTool(coordinator))
-    agent = Agent(config, client, registry, permissions, session, tui, hooks)
+    agent = Agent(config, client, registry, permissions, session, tui, hooks, skills=skills)
     hooks.emit("SessionStart", {"source": "prompt" if config.prompt else "interactive"})
 
     def signal_handler(sig, frame):
