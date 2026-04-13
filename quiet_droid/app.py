@@ -64,9 +64,9 @@ def main():
     tui.set_skill_names(skills.keys())
     if skills:
         system_prompt += "\n# Loaded Skills\n"
-        for skill_name, skill_content in skills.items():
-            truncated = skill_content[:2000] + "..." if len(skill_content) > 2000 else skill_content
-            system_prompt += f"\n## Skill: {skill_name}\n{truncated}\n"
+        system_prompt += "The following skill metadata was loaded at startup. Load full SKILL.md instructions only when the user explicitly invokes a skill.\n"
+        for skill in skills.values():
+            system_prompt += "\n".join(skill.summary_lines()) + "\n"
         if config.debug:
             print(f"{C.DIM}[debug] Loaded {len(skills)} skills: {', '.join(skills.keys())}{C.RESET}", file=sys.stderr)
 
