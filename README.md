@@ -149,8 +149,11 @@ Windows:
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 export OPENAI_API_KEY="your-api-key"
 export QUIET_DROID_MODEL="gpt-4.1-mini"
+export OPENAI_MODEL="gpt-4.1-mini"
 export QUIET_DROID_DEBUG="1"
 ```
+
+モデル指定は `QUIET_DROID_MODEL` を優先し、互換目的で `OPENAI_MODEL` も利用できます。
 
 互換目的で `OLLAMA_HOST` も `OPENAI_BASE_URL` の代替として利用できます。
 
@@ -169,10 +172,13 @@ export QUIET_DROID_MODEL="glm-4.5"
 OPENAI_BASE_URL=http://localhost:8000/v1
 OPENAI_API_KEY=your-api-key
 MODEL=gpt-4.1-mini
+OPENAI_MODEL=gpt-4.1-mini
 MAX_TOKENS=8192
 TEMPERATURE=0.7
 CONTEXT_WINDOW=32768
 ```
+
+config ファイルでは `MODEL` を優先し、互換目的で `OPENAI_MODEL` も利用できます。
 
 ### CLI
 

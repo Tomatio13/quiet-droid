@@ -127,7 +127,7 @@ class Config:
                     key, val = line.split("=", 1)
                     key = key.strip()
                     val = val.strip().strip("\"'")
-                    if key == "MODEL" and val:
+                    if key in {"MODEL", "OPENAI_MODEL"} and val:
                         self.model = val
                     elif key in {"OPENAI_BASE_URL", "BASE_URL", "OLLAMA_HOST"} and val:
                         self.base_url = val
@@ -160,6 +160,8 @@ class Config:
             self.api_key = os.environ["OPENAI_API_KEY"]
         if os.environ.get("QUIET_DROID_MODEL"):
             self.model = os.environ["QUIET_DROID_MODEL"]
+        elif os.environ.get("OPENAI_MODEL"):
+            self.model = os.environ["OPENAI_MODEL"]
         if os.environ.get("QUIET_DROID_DEBUG") == "1":
             self.debug = True
 
