@@ -7,6 +7,7 @@ import threading
 import time
 
 from .config import Config
+from .input_expansion import _resolve_reference
 from .terminal import C, ansi, get_terminal_width, truncate_to_display_width
 
 try:
@@ -70,7 +71,38 @@ class TUI:
         if text.startswith("$"):
             skill_commands = [f"${name}" for name in self.skill_names]
             return [cmd for cmd in skill_commands if cmd.startswith(text)]
+        if text.startswith("@"):
+            return self._get_file_completion_candidates(text)
         return []
+
+    def _get_file_completion_candidates(self, text):
+        raw_path = text[1:]
+        base_dir = os.getcwd()
+        search_dir = base_dir
+        prefix = ""
+        if raw_path:
+            normalized = os.path.expanduser(raw_path)
+            dirname, prefix = os.path.split(normalized)
+            if dirname:
+                candidate_dir = dirname if os.path.isabs(dirname) else os.path.join(base_dir, dirname)
+                resolved_dir, error = _resolve_reference(candidate_dir, base_dir)
+                if error or not resolved_dir or not os.path.isdir(resolved_dir):
+                    return []
+                search_dir = resolved_dir
+        try:
+            entries = os.listdir(search_dir)
+        except OSError:
+            return []
+        candidates = []
+        for entry in sorted(entries):
+            if not entry.startswith(prefix):
+                continue
+            full_path = os.path.join(search_dir, entry)
+            rel_path = os.path.relpath(full_path, base_dir)
+            if os.path.isdir(full_path):
+                rel_path += "/"
+            candidates.append(f"@{rel_path}")
+        return candidates
 
     def _detect_cjk_locale(self):
         try:
@@ -338,6 +370,7 @@ class TUI:
   {_c198}\"\"\"{C.RESET}                Multi-line input
   {C.DIM}/ + Enter      show commands / Tab for completion{C.RESET}
   {C.DIM}$ + Enter      show skills / Tab for completion{C.RESET}
+  {C.DIM}@path          inline file / Tab for completion{C.RESET}
   {_c51}━━ Tools {sep[8:]}{C.RESET}
   {_c87}Bash, Read, Write, Edit, Glob, Grep, SubAgent, ParallelAgents{C.RESET}{ime_hint}
 """)

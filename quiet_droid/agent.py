@@ -7,6 +7,7 @@ import urllib.error
 import uuid
 
 from .terminal import C, ansi
+from .input_expansion import inject_file_context
 from .skills import inject_skill_context
 from .tools import ToolResult
 
@@ -60,7 +61,8 @@ class Agent:
                 print()
                 return
 
-        effective_input = inject_skill_context(user_input, self.skills)
+        effective_input = inject_file_context(user_input, self.config.cwd)
+        effective_input = inject_skill_context(effective_input, self.skills)
         self.session.add_user_message(effective_input)
         self._interrupted.clear()
         recent_tool_calls = []
