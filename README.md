@@ -143,6 +143,8 @@ Windows:
 
 `config` ファイル本体は自動生成しません。必要な場合だけ `~/.config/quiet-droid/config` を手動で作成してください。
 
+グローバル指示ファイルは `~/.config/quiet-droid/CLAUDE.md` を優先して読み込みます。`CLAUDE.md` が無い場合は `~/.config/quiet-droid/AGENTS.md` を読み込みます。
+
 ### Environment Variables
 
 ```bash
@@ -256,6 +258,7 @@ Skills はシステムプロンプトへ注入されます。
 
 見つかったファイル内容はシステムプロンプトへ順に注入されます。`AGENTS.md` に運用ルールや出力言語、作業方針を書いておく運用に対応しています。
 同一階層に複数あっても、各ディレクトリでは最初に見つかった1ファイルのみを採用します。
+グローバル設定ディレクトリでは `CLAUDE.md` を優先し、無ければ `AGENTS.md` を採用します。
 
 ## 🪝 Hooks
 

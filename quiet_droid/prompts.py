@@ -80,14 +80,16 @@ IMPORTANT — This is Windows:
             content = f.read(max_bytes)
         return content, file_size > max_bytes
 
-    global_md = os.path.join(config.config_dir, "CLAUDE.md")
-    if os.path.isfile(global_md) and not os.path.islink(global_md):
-        try:
-            content, truncated = load_instruction_file(global_md)
-            note = "\n[Note: file truncated, only first 4000 bytes loaded]" if truncated else ""
-            prompt += f"\n# Global Instructions\n{sanitize(content)}{note}\n"
-        except Exception:
-            pass
+    for global_filename in ["CLAUDE.md", "AGENTS.md"]:
+        global_path = os.path.join(config.config_dir, global_filename)
+        if os.path.isfile(global_path) and not os.path.islink(global_path):
+            try:
+                content, truncated = load_instruction_file(global_path)
+                note = "\n[Note: file truncated, only first 4000 bytes loaded]" if truncated else ""
+                prompt += f"\n# Global Instructions (from {global_filename})\n{sanitize(content)}{note}\n"
+                break
+            except Exception:
+                pass
 
     instruction_files = []
     search_dir = cwd
