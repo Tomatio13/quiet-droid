@@ -44,6 +44,39 @@ class Agent:
                 return tasks
         return []
 
+    def _ensure_context_window_before_send(self):
+        status = self.session.context_window_status()
+        if status["ok"]:
+            return True
+
+        before = status["current"]
+        self.session.compact_if_needed(force=True)
+        status = self.session.context_window_status()
+        if status["ok"]:
+            pct = min(status["pct"], 100)
+            print(f"\n  {ansi(chr(27)+'[38;5;226m')}⚡ Auto-compacted: {before}→{status['current']} tokens ({pct}% used){C.RESET}")
+            return True
+
+        print(
+            "\n"
+            f"{C.RED}Context window exceeded before API request.{C.RESET}\n"
+            f"  Current estimate: {status['current']} tokens\n"
+            f"  Context window:   {status['limit']} tokens\n"
+            f"  Over limit by:    {status['over_by']} tokens\n"
+            f"{C.DIM}Use Read with offset/limit, Grep, or a smaller @file reference, then try again.{C.RESET}"
+        )
+        if self.hooks:
+            self.hooks.emit(
+                "Stop",
+                {
+                    "stop_reason": "context_window_exceeded",
+                    "current_tokens": status["current"],
+                    "context_window": status["limit"],
+                    "over_by": status["over_by"],
+                },
+            )
+        return False
+
     def run(self, user_input):
         if self.hooks:
             self.hooks.emit("UserPromptSubmit", {"prompt": user_input})
@@ -75,6 +108,8 @@ class Agent:
             text = ""
             try:
                 tools = self.registry.get_schemas()
+                if not self._ensure_context_window_before_send():
+                    break
                 if iteration == 0:
                     self.tui.start_spinner("Thinking")
                 else:

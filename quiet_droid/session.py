@@ -139,6 +139,19 @@ class Session:
     def get_token_estimate(self):
         return self._token_estimate + self._estimate_tokens(self.system_prompt)
 
+    def context_window_status(self):
+        current = self.get_token_estimate()
+        limit = int(getattr(self.config, "context_window", 0) or 0)
+        over_by = max(0, current - limit) if limit > 0 else 0
+        pct = int((current / limit) * 100) if limit > 0 else 0
+        return {
+            "ok": limit <= 0 or current <= limit,
+            "current": current,
+            "limit": limit,
+            "over_by": over_by,
+            "pct": pct,
+        }
+
     def _summarize_old_messages(self, old_messages):
         if not self._client or not self.config.model:
             return None
