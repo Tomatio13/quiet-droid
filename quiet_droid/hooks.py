@@ -20,12 +20,6 @@ class HookManager:
         self._session = session
         self._hooks = self._load_hooks()
 
-    def set_session(self, session):
-        self._session = session
-
-    def has_hooks(self):
-        return any(self._hooks.values())
-
     def _load_hooks(self):
         merged = {}
         for path in self._candidate_paths():

@@ -113,9 +113,6 @@ class TUI:
             lang = os.environ.get("LANG", "")
         return any(lang.startswith(prefix) for prefix in ("ja", "zh", "ko", "ja_JP", "zh_CN", "zh_TW", "ko_KR"))
 
-    def _scroll_print(self, *args, **kwargs):
-        print(*args, **kwargs)
-
     def banner(self, config, model_ok=True):
         term_w = get_terminal_width()
         if term_w >= 82:

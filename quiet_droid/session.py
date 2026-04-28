@@ -93,9 +93,6 @@ class Session:
         if tool_calls:
             self._token_estimate += len(json.dumps(tool_calls, ensure_ascii=False)) // 4
 
-    def add_assistant_message(self, text, tool_calls=None):
-        self.add_droid_message(text, tool_calls)
-
     @staticmethod
     def _parse_image_marker(output):
         if not output or not output.startswith('{"type":'):
