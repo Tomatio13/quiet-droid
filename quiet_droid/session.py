@@ -9,6 +9,7 @@ from datetime import datetime
 
 class Session:
     MAX_MESSAGES = 500
+    MAX_SESSION_FILE_SIZE = 50 * 1024 * 1024
 
     def __init__(self, config, system_prompt):
         self.config = config
@@ -29,6 +30,44 @@ class Session:
 
     def set_hooks(self, hooks):
         self._hooks = hooks
+
+    @staticmethod
+    def _project_index_path(config):
+        return os.path.join(config.sessions_dir, "project-index.json")
+
+    @staticmethod
+    def _load_project_index(config):
+        path = Session._project_index_path(config)
+        if not os.path.isfile(path) or os.path.islink(path):
+            return {}
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    @staticmethod
+    def _save_project_index(config, index):
+        path = Session._project_index_path(config)
+        fd, tmp_path = tempfile.mkstemp(dir=config.sessions_dir, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(index, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, path)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+    @staticmethod
+    def _cwd_hash(config):
+        return hashlib.sha256(os.path.abspath(config.cwd).encode("utf-8")).hexdigest()[:16]
+
+    @staticmethod
+    def get_project_session(config):
+        return Session._load_project_index(config).get(Session._cwd_hash(config))
 
     @staticmethod
     def _estimate_tokens(text):
@@ -273,3 +312,67 @@ class Session:
                 os.unlink(tmp_path)
             except OSError:
                 pass
+            return
+        index = self._load_project_index(self.config)
+        index[self._cwd_hash(self.config)] = self.session_id
+        self._save_project_index(self.config, index)
+
+    def load(self, session_id=None):
+        sid = session_id or self.session_id
+        path = os.path.join(self.config.sessions_dir, f"{sid}.jsonl")
+        real_path = os.path.realpath(path)
+        real_dir = os.path.realpath(self.config.sessions_dir)
+        if not real_path.startswith(real_dir + os.sep):
+            return False
+        if not os.path.isfile(path) or os.path.islink(path):
+            return False
+        try:
+            if os.path.getsize(path) > self.MAX_SESSION_FILE_SIZE:
+                return False
+        except OSError:
+            return False
+        messages = []
+        try:
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        msg = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(msg, dict) and isinstance(msg.get("role"), str):
+                        messages.append(msg)
+        except OSError:
+            return False
+        self.messages = messages
+        self.session_id = sid
+        self._recalculate_tokens()
+        return True
+
+    @staticmethod
+    def list_sessions(config):
+        if not os.path.isdir(config.sessions_dir):
+            return []
+        sessions = []
+        for filename in sorted(os.listdir(config.sessions_dir), reverse=True):
+            if not filename.endswith(".jsonl"):
+                continue
+            path = os.path.join(config.sessions_dir, filename)
+            if os.path.islink(path):
+                continue
+            try:
+                size = os.path.getsize(path)
+                mtime = os.path.getmtime(path)
+            except OSError:
+                continue
+            sessions.append(
+                {
+                    "id": filename[:-6],
+                    "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+                    "size": size,
+                    "messages": max(1, size // 200),
+                }
+            )
+        return sessions[:50]

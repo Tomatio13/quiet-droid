@@ -207,6 +207,14 @@ python3 quiet-droid.py \
   --yes
 ```
 
+Resume a saved conversation:
+
+```bash
+qd --resume
+qd --session-id 20260429_123456_ab12cd
+qd --list-sessions
+```
+
 ## 💻 Usage
 
 Interactive mode:
