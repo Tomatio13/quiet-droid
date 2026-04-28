@@ -21,6 +21,17 @@ def main():
     hooks = None
     session = None
 
+    if config.list_sessions:
+        sessions = Session.list_sessions(config)
+        if not sessions:
+            print("No saved sessions.")
+            return
+        print(f"\n{'ID':<24} {'Modified':<18} {'Messages':<10} {'Size':<10}")
+        print("-" * 66)
+        for saved in sessions:
+            print(f"{saved['id']:<24} {saved['modified']:<18} {saved['messages']:<10} {saved['size']:<10}")
+        return
+
     tui = TUI(config)
     if not config.model:
         print(f"\n{C.RED}モデルが設定されていません。{C.RESET}")
@@ -54,6 +65,41 @@ def main():
     registry.register(ParallelAgentTool(coordinator))
     agent = Agent(config, client, registry, permissions, session, tui, hooks, skills=skills)
     hooks.emit("SessionStart", {"source": "prompt" if config.prompt else "interactive"})
+
+    def show_resume_info(label):
+        messages = len(session.messages)
+        pct = min(int((session.get_token_estimate() / config.context_window) * 100), 100)
+        last_user_msg = ""
+        for msg in reversed(session.messages):
+            if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                last_user_msg = msg["content"].strip()[:80]
+                break
+        print(f"\n  {ansi(chr(27)+'[38;5;51m')}✦ Welcome back! Resumed {label}{C.RESET}")
+        info = f"{messages} messages, {pct}% context used"
+        if last_user_msg:
+            info += f' | last: "{last_user_msg}"'
+        print(f"  {C.DIM}{info}{C.RESET}\n")
+
+    if config.resume:
+        if config.session_id:
+            if session.load(config.session_id):
+                show_resume_info(f"session: {config.session_id}")
+            else:
+                print(f"{C.RED}No saved session found with ID '{config.session_id}'.{C.RESET}")
+                print(f"{C.DIM}List sessions: quiet-droid --list-sessions{C.RESET}")
+                return
+        else:
+            project_sid = Session.get_project_session(config)
+            resumed = False
+            if project_sid and session.load(project_sid):
+                show_resume_info(f"project session: {project_sid}")
+                resumed = True
+            if not resumed:
+                sessions = Session.list_sessions(config)
+                if sessions and session.load(sessions[0]["id"]):
+                    show_resume_info(sessions[0]["id"])
+                else:
+                    print(f"{C.YELLOW}Could not resume. Starting new session.{C.RESET}")
 
     def signal_handler(sig, frame):
         agent.interrupt()

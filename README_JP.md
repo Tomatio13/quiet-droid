@@ -207,6 +207,14 @@ python3 quiet-droid.py \
   --yes
 ```
 
+保存済みの会話を再開:
+
+```bash
+qd --resume
+qd --session-id 20260429_123456_ab12cd
+qd --list-sessions
+```
+
 ## 💻 Usage
 
 対話モード:

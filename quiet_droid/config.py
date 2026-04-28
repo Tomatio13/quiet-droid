@@ -25,7 +25,9 @@ class Config:
         self.prompt = None
         self.yes_mode = False
         self.debug = False
+        self.resume = False
         self.session_id = None
+        self.list_sessions = False
         self.cwd = os.getcwd()
 
         if os.name == "nt":
@@ -124,6 +126,9 @@ class Config:
         parser.add_argument("-m", "--model", help="Model name")
         parser.add_argument("-y", "--yes", action="store_true", help="Auto-approve all tool calls")
         parser.add_argument("--debug", action="store_true", help="Debug mode")
+        parser.add_argument("--resume", action="store_true", help="Resume the saved session for this project")
+        parser.add_argument("--session-id", help="Resume a specific saved session")
+        parser.add_argument("--list-sessions", action="store_true", help="List saved sessions")
         parser.add_argument("--base-url", "--openai-base-url", dest="base_url", help="OpenAI-compatible base URL")
         parser.add_argument("--api-key", "--openai-api-key", dest="api_key", help="API key for the OpenAI-compatible API")
         parser.add_argument("--ollama-host", dest="base_url_legacy", help=argparse.SUPPRESS)
@@ -142,6 +147,13 @@ class Config:
             self.yes_mode = True
         if args.debug:
             self.debug = True
+        if args.resume:
+            self.resume = True
+        if args.session_id:
+            self.session_id = args.session_id
+            self.resume = True
+        if args.list_sessions:
+            self.list_sessions = True
         if args.base_url:
             self.base_url = args.base_url
         elif args.base_url_legacy:

@@ -29,6 +29,7 @@ SLASH_COMMAND_SPECS = [
     ("/status", "Session info"),
     ("/save", "Save session"),
     ("/compact", "Compress context"),
+    ("/resume", "Use qd --resume"),
     ("/yes", "Auto-approve ON"),
     ("/no", "Auto-approve OFF"),
     ("/debug", "Toggle debug mode"),

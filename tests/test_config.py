@@ -47,6 +47,26 @@ class ConfigTests(unittest.TestCase):
 
             self.assertEqual(config.model, "gpt-4.1-mini")
 
+    def test_resume_flags_are_loaded_from_cli(self):
+        config = Config()
+        config._load_cli_args(["--resume"])
+
+        self.assertTrue(config.resume)
+        self.assertIsNone(config.session_id)
+
+    def test_session_id_enables_resume(self):
+        config = Config()
+        config._load_cli_args(["--session-id", "demo"])
+
+        self.assertTrue(config.resume)
+        self.assertEqual(config.session_id, "demo")
+
+    def test_list_sessions_flag_is_loaded_from_cli(self):
+        config = Config()
+        config._load_cli_args(["--list-sessions"])
+
+        self.assertTrue(config.list_sessions)
+
 
 if __name__ == "__main__":
     unittest.main()
