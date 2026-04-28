@@ -77,6 +77,19 @@ class Agent:
             )
         return False
 
+    def _emit_tool_event(self, event_name, tool_name, tool_params, response, duration):
+        if self.hooks:
+            self.hooks.emit(
+                event_name,
+                {
+                    "tool_name": tool_name,
+                    "tool_input": dict(tool_params),
+                    "tool_response": str(response),
+                    "duration_seconds": round(duration, 3),
+                },
+                matcher=tool_name,
+            )
+
     def run(self, user_input):
         if self.hooks:
             self.hooks.emit("UserPromptSubmit", {"prompt": user_input})
@@ -247,34 +260,14 @@ class Agent:
                         if is_long_op:
                             self.tui.stop_spinner()
                         is_error = isinstance(output, str) and (output.startswith("Error:") or output.startswith("Error -"))
-                        if self.hooks:
-                            event_name = "PostToolUseFailure" if is_error else "PostToolUse"
-                            self.hooks.emit(
-                                event_name,
-                                {
-                                    "tool_name": tool_name,
-                                    "tool_input": dict(tool_params),
-                                    "tool_response": str(output),
-                                    "duration_seconds": round(duration, 3),
-                                },
-                                matcher=tool_name,
-                            )
+                        event_name = "PostToolUseFailure" if is_error else "PostToolUse"
+                        self._emit_tool_event(event_name, tool_name, tool_params, output, duration)
                         self.tui.show_tool_result(tool_name, output, is_error=is_error, duration=duration, params=tool_params)
                         results.append(ToolResult(tc_id, output, is_error))
                     except KeyboardInterrupt:
                         self.tui.stop_spinner()
                         duration = time.time() - tool_started
-                        if self.hooks:
-                            self.hooks.emit(
-                                "PostToolUseFailure",
-                                {
-                                    "tool_name": tool_name,
-                                    "tool_input": dict(tool_params),
-                                    "tool_response": "Interrupted by user",
-                                    "duration_seconds": round(duration, 3),
-                                },
-                                matcher=tool_name,
-                            )
+                        self._emit_tool_event("PostToolUseFailure", tool_name, tool_params, "Interrupted by user", duration)
                         results.append(ToolResult(tc_id, "Interrupted by user", True))
                         self.tui.show_tool_result(tool_name, "Interrupted", True, duration=duration, params=tool_params)
                         self._interrupted.set()
@@ -283,17 +276,7 @@ class Agent:
                         self.tui.stop_spinner()
                         duration = time.time() - tool_started
                         error_msg = f"Tool error: {exc}"
-                        if self.hooks:
-                            self.hooks.emit(
-                                "PostToolUseFailure",
-                                {
-                                    "tool_name": tool_name,
-                                    "tool_input": dict(tool_params),
-                                    "tool_response": error_msg,
-                                    "duration_seconds": round(duration, 3),
-                                },
-                                matcher=tool_name,
-                            )
+                        self._emit_tool_event("PostToolUseFailure", tool_name, tool_params, error_msg, duration)
                         self.tui.show_tool_result(tool_name, error_msg, True, duration=duration, params=tool_params)
                         results.append(ToolResult(tc_id, error_msg, True))
 
@@ -336,9 +319,6 @@ class Agent:
 
                     traceback.print_exc()
                 break
-
-    def get_typeahead(self):
-        return ""
 
     def interrupt(self):
         self._interrupted.set()

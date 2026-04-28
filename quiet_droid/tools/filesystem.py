@@ -30,6 +30,45 @@ def _is_protected_path(file_path):
     return os.path.basename(file_path) in protected
 
 
+def _resolve_under_cwd(path, *, require_absolute=False, label="path"):
+    if require_absolute and not os.path.isabs(path):
+        return None, f"Error: {label} requires an absolute path"
+    if not os.path.isabs(path):
+        path = os.path.join(os.getcwd(), path)
+    try:
+        real_path = os.path.realpath(path)
+        cwd_real = os.path.realpath(os.getcwd())
+    except (OSError, ValueError):
+        return None, f"Error: cannot resolve path: {path}"
+    if not (real_path == cwd_real or real_path.startswith(cwd_real + os.sep)):
+        return None, f"Error: path is outside the current working directory: {path}"
+    return real_path, ""
+
+
+def _atomic_write(real_path, content, *, create_parent=False):
+    directory = os.path.dirname(real_path)
+    if create_parent:
+        os.makedirs(directory, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(dir=directory, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp_path, real_path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def _walk_files(base_real):
+    for root, dirs, files in os.walk(base_real):
+        dirs[:] = [d for d in dirs if d not in {".git", "__pycache__", "node_modules", ".venv", "venv"}]
+        for name in files:
+            yield root, name, os.path.join(root, name)
+
+
 class ReadTool(Tool):
     name = "Read"
     description = "Read a file from the filesystem."
@@ -47,15 +86,9 @@ class ReadTool(Tool):
         file_path = params.get("file_path", "")
         if not file_path:
             return "Error: no file_path provided"
-        if not os.path.isabs(file_path):
-            file_path = os.path.join(os.getcwd(), file_path)
-        try:
-            real_path = os.path.realpath(file_path)
-        except (OSError, ValueError):
-            return f"Error: cannot resolve path: {file_path}"
-        cwd_real = os.path.realpath(os.getcwd())
-        if not (real_path == cwd_real or real_path.startswith(cwd_real + os.sep)):
-            return f"Error: path is outside the current working directory: {file_path}"
+        real_path, error = _resolve_under_cwd(file_path)
+        if error:
+            return error
         if not os.path.exists(real_path):
             return f"Error: file not found: {file_path}"
         if os.path.isdir(real_path):
@@ -113,30 +146,13 @@ class WriteTool(Tool):
         content = params.get("content", "")
         if not file_path:
             return "Error: no file_path provided"
-        if not os.path.isabs(file_path):
-            return "Error: Write requires an absolute path"
-        try:
-            real_path = os.path.realpath(file_path)
-        except (OSError, ValueError):
-            return f"Error: cannot resolve path: {file_path}"
-        cwd_real = os.path.realpath(os.getcwd())
-        if not (real_path == cwd_real or real_path.startswith(cwd_real + os.sep)):
-            return f"Error: path is outside the current working directory: {file_path}"
+        real_path, error = _resolve_under_cwd(file_path, require_absolute=True, label="Write")
+        if error:
+            return error
         if _is_protected_path(real_path):
             return "Error: writing to protected configuration files is blocked."
         try:
-            os.makedirs(os.path.dirname(real_path), exist_ok=True)
-            fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(real_path), suffix=".tmp")
-            try:
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    f.write(content)
-                os.replace(tmp_path, real_path)
-            except Exception:
-                try:
-                    os.unlink(tmp_path)
-                except OSError:
-                    pass
-                raise
+            _atomic_write(real_path, content, create_parent=True)
         except OSError as exc:
             return f"Error: could not write file: {exc}"
         return f"Wrote {len(content)} bytes to {real_path}"
@@ -161,15 +177,9 @@ class EditTool(Tool):
         new_string = params.get("new_string", "")
         if not file_path:
             return "Error: no file_path provided"
-        if not os.path.isabs(file_path):
-            return "Error: Edit requires an absolute path"
-        try:
-            real_path = os.path.realpath(file_path)
-        except (OSError, ValueError):
-            return f"Error: cannot resolve path: {file_path}"
-        cwd_real = os.path.realpath(os.getcwd())
-        if not (real_path == cwd_real or real_path.startswith(cwd_real + os.sep)):
-            return f"Error: path is outside the current working directory: {file_path}"
+        real_path, error = _resolve_under_cwd(file_path, require_absolute=True, label="Edit")
+        if error:
+            return error
         if _is_protected_path(real_path):
             return "Error: editing protected configuration files is blocked."
         try:
@@ -180,17 +190,10 @@ class EditTool(Tool):
         if old_string not in original:
             return "Error: old_string not found in file"
         updated = original.replace(old_string, new_string, 1)
-        fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(real_path), suffix=".tmp")
         try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                f.write(updated)
-            os.replace(tmp_path, real_path)
-        except Exception:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
+            _atomic_write(real_path, updated)
+        except OSError as exc:
+            return f"Error: could not write file: {exc}"
         return f"Edited {real_path}"
 
 
@@ -211,22 +214,14 @@ class GlobTool(Tool):
         base_path = params.get("path") or os.getcwd()
         if not pattern:
             return "Error: no pattern provided"
-        if not os.path.isabs(base_path):
-            base_path = os.path.join(os.getcwd(), base_path)
-        try:
-            base_real = os.path.realpath(base_path)
-        except (OSError, ValueError):
-            return f"Error: cannot resolve path: {base_path}"
-        cwd_real = os.path.realpath(os.getcwd())
-        if not (base_real == cwd_real or base_real.startswith(cwd_real + os.sep)):
-            return f"Error: path is outside the current working directory: {base_path}"
+        base_real, error = _resolve_under_cwd(base_path)
+        if error:
+            return error
         matches = []
-        for root, dirs, files in os.walk(base_real):
-            dirs[:] = [d for d in dirs if d not in {".git", "__pycache__", "node_modules", ".venv", "venv"}]
-            for name in files:
-                rel = os.path.relpath(os.path.join(root, name), base_real)
-                if fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch(name, pattern):
-                    matches.append(os.path.join(root, name))
+        for root, name, file_path in _walk_files(base_real):
+            rel = os.path.relpath(file_path, base_real)
+            if fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch(name, pattern):
+                matches.append(file_path)
         matches.sort()
         return "\n".join(matches[:1000]) if matches else "(no matches)"
 
@@ -250,15 +245,9 @@ class GrepTool(Tool):
         filename_glob = params.get("glob")
         if not pattern:
             return "Error: no pattern provided"
-        if not os.path.isabs(path):
-            path = os.path.join(os.getcwd(), path)
-        try:
-            real_path = os.path.realpath(path)
-        except (OSError, ValueError):
-            return f"Error: cannot resolve path: {path}"
-        cwd_real = os.path.realpath(os.getcwd())
-        if not (real_path == cwd_real or real_path.startswith(cwd_real + os.sep)):
-            return f"Error: path is outside the current working directory: {path}"
+        real_path, error = _resolve_under_cwd(path)
+        if error:
+            return error
         try:
             regex = re.compile(pattern)
         except re.error as exc:
@@ -268,12 +257,10 @@ class GrepTool(Tool):
         if os.path.isfile(real_path):
             files = [real_path]
         else:
-            for root, dirs, names in os.walk(real_path):
-                dirs[:] = [d for d in dirs if d not in {".git", "__pycache__", "node_modules", ".venv", "venv"}]
-                for name in names:
-                    if filename_glob and not fnmatch.fnmatch(name, filename_glob):
-                        continue
-                    files.append(os.path.join(root, name))
+            for _, name, file_path in _walk_files(real_path):
+                if filename_glob and not fnmatch.fnmatch(name, filename_glob):
+                    continue
+                files.append(file_path)
 
         matches = []
         for file_path in files:
