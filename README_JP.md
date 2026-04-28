@@ -35,6 +35,7 @@
   - `Edit`
   - `Glob`
   - `Grep`
+  - `AskUserQuestion`
 - エージェント補助ツール
   - `SubAgent`
   - `ParallelAgents`
@@ -43,6 +44,7 @@
 - `AGENTS.md` / `CLAUDE.md` / `.quiet-droid.json` によるプロジェクト指示の自動読込
 - 対話モードと one-shot モード
 - セッション保存、履歴保存、権限確認の管理
+- プロジェクト単位またはセッションID指定での会話再開
 
 ## 🚀 Quick Start
 
@@ -214,6 +216,17 @@ qd --resume
 qd --session-id 20260429_123456_ab12cd
 qd --list-sessions
 ```
+
+### Session Resume
+
+Quiet Droid は会話をセッション保存先の JSONL ファイルとして保存します。
+
+- `qd --resume` は現在の作業ディレクトリに紐づく保存済みセッションを再開します。
+- プロジェクトに紐づくセッションがない場合、`qd --resume` は直近の保存済みセッションを再開します。
+- `qd --session-id <id>` は指定したセッションを再開します。
+- `qd --list-sessions` はモデル未設定でも保存済みセッションを一覧表示します。
+
+再開されるのは会話メッセージとツール結果です。作業ツリー内のファイル変更を巻き戻したり復元したりはしません。
 
 ## 💻 Usage
 
