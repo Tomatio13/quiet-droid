@@ -15,20 +15,6 @@ from .tools import MultiAgentCoordinator, ParallelAgentTool, PermissionMgr, SubA
 from .tui import HAS_READLINE, TUI, readline
 
 
-def show_model_list(models):
-    from .config import Config as ConfigClass
-
-    tier_colors = {"S": "196", "A": "208", "B": "226", "C": "46", "D": "51", "E": "250"}
-    for model in sorted(models):
-        tier, min_ram = ConfigClass.get_model_tier(model)
-        if tier:
-            color = ansi(chr(27) + f"[38;5;{tier_colors.get(tier, '250')}m")
-            ctx = ConfigClass.MODEL_CONTEXT_SIZES.get(model, "?")
-            print(f"    {color}[{tier}]{C.RESET} {model}  {C.DIM}(ctx: {ctx}, ~{min_ram}GB+ RAM){C.RESET}")
-        else:
-            print(f"    {C.DIM}[?]{C.RESET} {model}")
-
-
 def main():
     init_terminal_colors()
     config = Config().load()
@@ -36,29 +22,16 @@ def main():
     session = None
 
     tui = TUI(config)
+    if not config.model:
+        print(f"\n{C.RED}モデルが設定されていません。{C.RESET}")
+        print(f"{C.DIM}--model、QUIET_DROID_MODEL、OPENAI_MODEL、または config の MODEL を指定してください。{C.RESET}")
+        if sys.exit:
+            sys.exit(1)
+
     if not config.prompt:
         tui.banner(config, model_ok=True)
 
     client = OpenAICompatClient(config)
-    ok, models = client.check_connection()
-    if not ok:
-        if client.allows_chat_without_models_check(config.model):
-            print(f"\n{C.YELLOW}/models の接続確認に失敗しましたが、{config.model} は chat/completions を直接試します。{C.RESET}")
-            print(f"{C.DIM}Base URL: {config.base_url}{C.RESET}")
-        else:
-            print(f"\n{C.RED}OpenAI-compatible API に接続できませんでした。{C.RESET}")
-            print(f"{C.DIM}Base URL: {config.base_url}{C.RESET}")
-            if sys.exit:
-                sys.exit(1)
-
-    model_ok = client.check_model(config.model, available_models=models)
-    if not model_ok:
-        print(f"\n{C.YELLOW}モデル '{config.model}' は /v1/models に見つかりませんでした。{C.RESET}")
-        if models:
-            print(f"{C.DIM}利用可能モデル: {', '.join(models)}{C.RESET}")
-        else:
-            print(f"{C.DIM}/v1/models の一覧が取得できませんでした。{C.RESET}")
-
     system_prompt = build_system_prompt(config)
     skills = load_skills(config)
     tui.set_skill_names(skills.keys())
@@ -162,22 +135,11 @@ def main():
                             if not __import__("re").match(r"^[a-zA-Z0-9_.:\-/]+$", new_model):
                                 print(f"{C.RED}Invalid model name: {new_model!r}{C.RESET}")
                                 continue
-                            ok, fresh_models = client.check_connection()
-                            if client.check_model(new_model, available_models=fresh_models if ok else None):
-                                config.model = new_model
-                                config._apply_context_window(new_model)
-                                print(f"{C.GREEN}Switched to model: {new_model}{C.RESET}")
-                            else:
-                                print(f"{C.YELLOW}Model '{new_model}' is /v1/models に見つかりませんでした。{C.RESET}")
-                                if fresh_models:
-                                    show_model_list(fresh_models)
+                            config.model = new_model
+                            print(f"{C.GREEN}Switched to model: {new_model}{C.RESET}")
                         else:
-                            ok, fresh_models = client.check_connection()
                             print(f"\n  {C.BOLD}Current model:{C.RESET} {ansi(chr(27)+'[38;5;51m')}{config.model}{C.RESET}")
                             print(f"  {C.DIM}Context window: {config.context_window} tokens{C.RESET}")
-                            if ok and fresh_models:
-                                print(f"\n  {C.BOLD}Installed models:{C.RESET}")
-                                show_model_list(fresh_models)
                         continue
                     if cmd == "/yes":
                         config.yes_mode = True

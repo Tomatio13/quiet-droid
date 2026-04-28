@@ -1,40 +1,10 @@
 import argparse
-import json
 import os
-import platform
 import re
-import shutil
 import urllib.parse
-import urllib.request
 
 from . import __version__
 from .terminal import C
-
-
-def _get_ram_gb() -> int:
-    try:
-        if platform.system() == "Darwin":
-            import subprocess
-
-            result = subprocess.run(
-                ["sysctl", "-n", "hw.memsize"],
-                capture_output=True,
-                text=True,
-                timeout=3,
-            )
-            if result.returncode == 0:
-                return max(1, int(int(result.stdout.strip()) / (1024 ** 3)))
-        elif os.name == "posix":
-            pages = os.sysconf("SC_PHYS_PAGES")
-            page_size = os.sysconf("SC_PAGE_SIZE")
-            return max(1, int((pages * page_size) / (1024 ** 3)))
-    except Exception:
-        pass
-    return 8
-
-
-def _get_vram_gb() -> int:
-    return 0
 
 
 class Config:
@@ -44,32 +14,6 @@ class Config:
     DEFAULT_MAX_TOKENS = 8192
     DEFAULT_TEMPERATURE = 0.7
     DEFAULT_CONTEXT_WINDOW = 32768
-
-    MODEL_CONTEXT_SIZES = {
-        "deepseek-v3:671b": 131072,
-        "qwen3-coder:30b": 65536,
-        "qwen3:14b": 65536,
-        "qwen3:8b": 32768,
-        "qwen3:4b": 16384,
-        "qwen3:1.7b": 4096,
-        "llama3.1:8b": 32768,
-        "llama3.2:3b": 8192,
-        "deepseek-coder:6.7b": 16384,
-        "codellama:7b": 16384,
-    }
-
-    MODEL_TIERS = [
-        ("deepseek-v3:671b", 256, "S"),
-        ("qwen3-coder:30b", 32, "B"),
-        ("qwen3:14b", 16, "C"),
-        ("qwen3:8b", 8, "D"),
-        ("llama3.1:8b", 8, "D"),
-        ("deepseek-coder:6.7b", 8, "D"),
-        ("codellama:7b", 8, "D"),
-        ("qwen3:4b", 4, "E"),
-        ("qwen3:1.7b", 2, "E"),
-        ("llama3.2:3b", 4, "E"),
-    ]
 
     def __init__(self):
         self.base_url = self.DEFAULT_BASE_URL
@@ -99,7 +43,6 @@ class Config:
         self._load_env()
         self._load_config_file()
         self._load_cli_args(argv)
-        self._auto_detect_model()
         self._validate_ollama_host()
         self._ensure_dirs()
         return self
@@ -211,74 +154,6 @@ class Config:
             self.temperature = args.temperature
         if args.context_window is not None:
             self.context_window = args.context_window
-
-    def _query_installed_models(self):
-        parsed = urllib.parse.urlparse(self.base_url)
-        if not parsed.scheme or not parsed.netloc:
-            return []
-        path = parsed.path.rstrip("/")
-        if path.endswith("/v1"):
-            url = urllib.parse.urlunparse(parsed._replace(path=path + "/models"))
-        else:
-            url = urllib.parse.urlunparse(parsed._replace(path=path + "/v1/models"))
-        try:
-            request = urllib.request.Request(url)
-            if self.api_key:
-                request.add_header("Authorization", f"Bearer {self.api_key}")
-            resp = urllib.request.urlopen(request, timeout=3)
-            try:
-                data = json.loads(resp.read(10 * 1024 * 1024))
-            finally:
-                resp.close()
-            return [m.get("id", "").strip() for m in data.get("data", []) if m.get("id")]
-        except Exception:
-            return []
-
-    def _pick_best_model(self, installed, ram_gb):
-        installed_set = set(installed)
-        for model_name, min_ram, _ in self.MODEL_TIERS:
-            if ram_gb < min_ram:
-                continue
-            if model_name in installed_set:
-                return model_name
-            if model_name + ":latest" in installed_set:
-                return model_name + ":latest"
-        return None
-
-    def _auto_detect_model(self):
-        if self.model:
-            self._apply_context_window(self.model)
-            return
-        ram_gb = max(_get_ram_gb(), _get_vram_gb())
-        installed = self._query_installed_models()
-        if installed:
-            best = self._pick_best_model(installed, ram_gb)
-            if best:
-                self.model = best
-                self._apply_context_window(best)
-                return
-        if ram_gb >= 32:
-            self.model = "qwen3-coder:30b"
-        elif ram_gb >= 16:
-            self.model = "qwen3:8b"
-        else:
-            self.model = "qwen3:1.7b"
-            self.context_window = 4096
-
-    def _apply_context_window(self, model_name):
-        if self.context_window != self.DEFAULT_CONTEXT_WINDOW:
-            return
-        for name, ctx in self.MODEL_CONTEXT_SIZES.items():
-            if name in model_name or model_name in name:
-                self.context_window = ctx
-                return
-
-    @classmethod
-    def get_model_tier(cls, model_name):
-        for name, min_ram, tier in cls.MODEL_TIERS:
-            if name in model_name or model_name.split(":")[0] == name.split(":")[0]:
-                return tier, min_ram
-        return None, None
 
     def _validate_ollama_host(self):
         parsed = urllib.parse.urlparse(self.base_url)

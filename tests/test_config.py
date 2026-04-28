@@ -7,6 +7,17 @@ from quiet_droid.config import Config
 
 
 class ConfigTests(unittest.TestCase):
+    def test_model_stays_empty_when_not_configured(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                config = Config()
+                config.config_dir = tmpdir
+                config.state_dir = tmpdir
+                config._refresh_paths()
+                config.load([])
+
+                self.assertEqual(config.model, "")
+
     def test_env_openai_model_is_used_when_quiet_droid_model_is_absent(self):
         with patch.dict(os.environ, {"OPENAI_MODEL": "gpt-4.1-mini"}, clear=True):
             config = Config()
