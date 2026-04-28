@@ -25,7 +25,7 @@ SLASH_COMMAND_SPECS = [
     ("/q", "Exit"),
     ("/clear", "Clear conversation"),
     ("/model", "Show or switch model"),
-    ("/models", "List installed models"),
+    ("/models", "Show current model"),
     ("/status", "Session info"),
     ("/save", "Save session"),
     ("/compact", "Compress context"),

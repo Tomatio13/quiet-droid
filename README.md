@@ -5,6 +5,11 @@
 </p>
 
 <p align="center">
+  <a href="README_JP.md"><img src="https://img.shields.io/badge/ドキュメント-日本語-white.svg" alt="Japanese documentation"></a>
+  <a href="README.md"><img src="https://img.shields.io/badge/english-document-white.svg" alt="English documentation"></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Quiet-Droid-111111?style=for-the-badge&logo=android&logoColor=A4C639" alt="Quiet Droid">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/API-OpenAI%20Compatible-black" alt="OpenAI Compatible API">
@@ -12,33 +17,36 @@
 </p>
 
 <p align="center">
-  静かに動いて、必要なときだけ強く出るターミナル向けコーディングエージェント
+  Quiet until it matters: a terminal coding agent for focused local workflows.
 </p>
 
-単一ファイル版から分離し、`basic agent + skills loader` に絞った構成にしています。
+<p align="center">
+  <img src="asset/screen.png" alt="Quiet Droid terminal screenshot" width="900">
+</p>
 
 ## ✨ Features
 
-- OpenAI互換APIの `/v1/chat/completions` を利用
-  - ただし `model` が `glm-` で始まる場合は `/chat/completions` を利用
-- 基本ツールのみ搭載
+- Uses the OpenAI-compatible `/v1/chat/completions` API
+  - Uses `/chat/completions` instead when the `model` name starts with `glm-`
+- Ships with a small core tool set
   - `Bash`
   - `Read`
   - `Write`
   - `Edit`
   - `Glob`
   - `Grep`
-- エージェント補助ツール
+- Agent helper tools
   - `SubAgent`
   - `ParallelAgents`
-- Skills の自動読込
-- `AGENTS.md` / `CLAUDE.md` / `.quiet-droid.json` によるプロジェクト指示の自動読込
-- 対話モードと one-shot モード
-- セッション保存、履歴保存、権限確認の管理
+- Automatic Skills loading
+- Hooks
+- Automatic project instruction loading from `AGENTS.md`, `CLAUDE.md`, and `.quiet-droid.json`
+- Interactive mode and one-shot mode
+- Session storage, input history, and permission management
 
 ## 🚀 Quick Start
 
-`qd` コマンドで使う場合:
+Use the `qd` command:
 
 ```bash
 pipx install .
@@ -47,7 +55,7 @@ export OPENAI_API_KEY="your-api-key"
 qd
 ```
 
-スクリプトを直接実行する場合:
+Run the script directly:
 
 ```bash
 export OPENAI_BASE_URL="http://localhost:8000/v1"
@@ -55,35 +63,35 @@ export OPENAI_API_KEY="your-api-key"
 python3 quiet-droid.py
 ```
 
-one-shot 実行:
+Run a one-shot prompt:
 
 ```bash
-python3 quiet-droid.py -p "pwd を実行して"
+python3 quiet-droid.py -p "run pwd"
 ```
 
-Debian / Ubuntu 系では PEP 668 により `pip install -e .` が失敗することがあります。その場合は `pipx install .` か、仮想環境を作って `pip install -e .` を使ってください。
+On Debian and Ubuntu systems, PEP 668 can make `pip install -e .` fail. Use `pipx install .`, or create a virtual environment and run `pip install -e .` inside it.
 
 ## 📦 Installation
 
-`pipx` を使う場合:
+With `pipx`:
 
 ```bash
 pipx install .
 ```
 
-更新する場合:
+Update:
 
 ```bash
 pipx reinstall .
 ```
 
-アンインストールする場合:
+Uninstall:
 
 ```bash
 pipx uninstall quiet-droid
 ```
 
-仮想環境を使う場合:
+With a virtual environment:
 
 ```bash
 python3 -m venv .venv
@@ -91,14 +99,14 @@ python3 -m venv .venv
 pip install -e .
 ```
 
-仮想環境版を削除する場合:
+Remove the virtual environment install:
 
 ```bash
-deactivate  # 有効化している場合のみ
+deactivate  # only if the environment is active
 rm -rf .venv
 ```
 
-インストール後は次のコマンドが使えます。
+After installation, these commands are available:
 
 ```bash
 qd --help
@@ -108,42 +116,42 @@ quiet-droid --help
 ## 📋 Requirements
 
 - Python 3.10+
-- OpenAI互換APIサーバ
-  - `/v1/models`
+- OpenAI-compatible API server
   - `/v1/chat/completions`
 
 ## ⚙️ Configuration
 
-設定方法は3通りあります。
+Quiet Droid accepts configuration from three sources:
 
-1. 環境変数
-2. CLI引数
+1. Environment variables
+2. CLI arguments
 3. `~/.config/quiet-droid/config`
 
-優先順位は `CLI引数 > configファイル > 環境変数 > デフォルト値` です。
+Precedence is `CLI arguments > config file > environment variables > defaults`.
 
-初回起動時には設定ディレクトリと状態保存ディレクトリを自動作成します。
+On first launch, Quiet Droid creates its config and state directories automatically.
+It does not choose a model automatically. Set one explicitly with `--model`, `MODEL`, `QUIET_DROID_MODEL`, or `OPENAI_MODEL`.
 
 Linux / macOS:
 
-- 設定ディレクトリ: `~/.config/quiet-droid`
-- 権限設定: `~/.config/quiet-droid/permissions.json`
-- 状態保存ディレクトリ: `~/.local/state/quiet-droid`
-- セッション保存先: `~/.local/state/quiet-droid/sessions`
-- 入力履歴: `~/.local/state/quiet-droid/history`
+- Config directory: `~/.config/quiet-droid`
+- Permission config: `~/.config/quiet-droid/permissions.json`
+- State directory: `~/.local/state/quiet-droid`
+- Session directory: `~/.local/state/quiet-droid/sessions`
+- Input history: `~/.local/state/quiet-droid/history`
 
 Windows:
 
-- 設定ディレクトリ: `%LOCALAPPDATA%\quiet-droid`
-- 設定ファイル: `%LOCALAPPDATA%\quiet-droid\config`
-- 権限設定: `%LOCALAPPDATA%\quiet-droid\permissions.json`
-- 状態保存ディレクトリ: `%LOCALAPPDATA%\quiet-droid`
-- セッション保存先: `%LOCALAPPDATA%\quiet-droid\sessions`
-- 入力履歴: `%LOCALAPPDATA%\quiet-droid\history`
+- Config directory: `%LOCALAPPDATA%\quiet-droid`
+- Config file: `%LOCALAPPDATA%\quiet-droid\config`
+- Permission config: `%LOCALAPPDATA%\quiet-droid\permissions.json`
+- State directory: `%LOCALAPPDATA%\quiet-droid`
+- Session directory: `%LOCALAPPDATA%\quiet-droid\sessions`
+- Input history: `%LOCALAPPDATA%\quiet-droid\history`
 
-`config` ファイル本体は自動生成しません。必要な場合だけ `~/.config/quiet-droid/config` を手動で作成してください。
+The `config` file itself is not generated automatically. Create `~/.config/quiet-droid/config` manually only when you need it.
 
-グローバル指示ファイルは `~/.config/quiet-droid/CLAUDE.md` を優先して読み込みます。`CLAUDE.md` が無い場合は `~/.config/quiet-droid/AGENTS.md` を読み込みます。
+Global instruction loading prefers `~/.config/quiet-droid/CLAUDE.md`. If that file does not exist, Quiet Droid loads `~/.config/quiet-droid/AGENTS.md`.
 
 ### Environment Variables
 
@@ -155,11 +163,11 @@ export OPENAI_MODEL="gpt-4.1-mini"
 export QUIET_DROID_DEBUG="1"
 ```
 
-モデル指定は `QUIET_DROID_MODEL` を優先し、互換目的で `OPENAI_MODEL` も利用できます。
+Model selection prefers `QUIET_DROID_MODEL`. `OPENAI_MODEL` is supported for compatibility.
 
-互換目的で `OLLAMA_HOST` も `OPENAI_BASE_URL` の代替として利用できます。
+For compatibility, `OLLAMA_HOST` can also be used as a replacement for `OPENAI_BASE_URL`.
 
-`z.ai` の `glm-*` モデルを使う場合は、`OPENAI_BASE_URL` に `/v1` ではなく API ルートを指定してください。
+When using `glm-*` models from `z.ai`, set `OPENAI_BASE_URL` to the API root instead of a `/v1` URL.
 
 ```bash
 export OPENAI_BASE_URL="https://api.z.ai/api/paas/v4"
@@ -180,7 +188,7 @@ TEMPERATURE=0.7
 CONTEXT_WINDOW=32768
 ```
 
-config ファイルでは `MODEL` を優先し、互換目的で `OPENAI_MODEL` も利用できます。
+In the config file, `MODEL` takes precedence. `OPENAI_MODEL` is supported for compatibility.
 
 ### CLI
 
@@ -188,7 +196,7 @@ config ファイルでは `MODEL` を優先し、互換目的で `OPENAI_MODEL` 
 python3 quiet-droid.py --base-url http://localhost:8000/v1 --api-key your-api-key --model gpt-4.1-mini
 ```
 
-主な追加オプション:
+Common additional options:
 
 ```bash
 python3 quiet-droid.py \
@@ -201,19 +209,19 @@ python3 quiet-droid.py \
 
 ## 💻 Usage
 
-対話モード:
+Interactive mode:
 
 ```bash
 qd
 ```
 
-one-shot:
+One-shot mode:
 
 ```bash
-qd -p "pwd を実行して"
+qd -p "run pwd"
 ```
 
-ヘルプ:
+Help:
 
 ```bash
 qd --help
@@ -233,117 +241,49 @@ qd --help
 - `/no`
 - `/debug`
 
-通常入力では `exit` / `quit` / `bye` でも終了できます。
-`Tab` で `/` コマンド補完ができます。`/` だけを入力して Enter するとコマンド一覧を表示します。
-`Tab` で `$skill` 補完ができます。`$` だけを入力して Enter すると、ロード済み Skill 一覧を表示します。
+Plain `exit`, `quit`, or `bye` also ends an interactive session.
+Press `Tab` to complete slash commands. Enter `/` by itself to list available commands.
+Press `Tab` to complete `$skill` names. Enter `$` by itself to list loaded Skills.
 
 ## 🧩 Skills
 
-以下のディレクトリにある `*.md` を自動で読み込みます。
+Quiet Droid automatically loads `*.md` files from these directories:
 
 - `~/.config/quiet-droid/skills/`
 - `.quiet-droid/skills/`
 - `./skills/`
 
-Skills はシステムプロンプトへ注入されます。
-対話中に `$plan` のように Skill 名を入力しやすいよう、ロード済み Skill 名は Tab 補完と一覧表示に使われます。
+Skills are injected into the system prompt.
+Loaded Skill names are also used for Tab completion and listing, so you can easily reference them during a session with input such as `$plan`.
 
 ## 📜 Project Instructions
 
-プロジェクト固有の指示ファイルとして、カレントディレクトリから親ディレクトリ方向へ以下を探索して自動読込します。
+Quiet Droid searches upward from the current directory and automatically loads these project instruction files:
 
 - `.quiet-droid.json`
 - `CLAUDE.md`
 - `AGENTS.md`
 
-見つかったファイル内容はシステムプロンプトへ順に注入されます。`AGENTS.md` に運用ルールや出力言語、作業方針を書いておく運用に対応しています。
-同一階層に複数あっても、各ディレクトリでは最初に見つかった1ファイルのみを採用します。
-グローバル設定ディレクトリでは `CLAUDE.md` を優先し、無ければ `AGENTS.md` を採用します。
+Discovered content is injected into the system prompt in order. This supports workflows where `AGENTS.md` defines operating rules, output language, or project-specific guidance.
+When multiple instruction files exist in the same directory, Quiet Droid uses only the first matched file for that directory.
+In the global config directory, `CLAUDE.md` takes precedence over `AGENTS.md`.
 
 ## 🪝 Hooks
 
-最小実装として `command` 型フックをサポートしています。設定ファイルは次の順で読み込みます。
+Quiet Droid supports `command` hooks as a minimal hook implementation. Hook config files are loaded in this order:
 
 - `~/.config/quiet-droid/hooks.json`
 - `./.quiet-droid/hooks.json`
 
-Claude Code の公式ドキュメント:
+See [docs/hooks.md](docs/hooks.md) for supported events, hook types, and examples.
+
+Claude Code official documentation:
 
 - https://code.claude.com/docs/ja/hooks
 
-Claude Code フック一覧と `quiet-droid` の対応状況:
-
-| Event | Status | Notes |
-| --- | --- | --- |
-| `SessionStart` | Supported | 対応済み |
-| `InstructionsLoaded` | Not supported | instruction 読み込み時イベントは未実装 |
-| `UserPromptSubmit` | Supported | 対応済み |
-| `PreToolUse` | Supported | `allow` / `ask` / `deny` をサポート |
-| `PermissionRequest` | Supported | 既存 permission UI と連動 |
-| `PostToolUse` | Supported | 成功時に発火 |
-| `PostToolUseFailure` | Supported | エラー時に発火 |
-| `PermissionDenied` | Supported | deny ルールや user deny で発火 |
-| `Notification` | Not supported | 通知抽象が未実装 |
-| `SubagentStart` | Supported | `SubAgent` 実行開始時 |
-| `SubagentStop` | Supported | `SubAgent` 実行終了時 |
-| `TaskCreated` | Not supported | 並列タスクはあるが専用イベントは未実装 |
-| `TaskCompleted` | Not supported | 並列タスクはあるが専用イベントは未実装 |
-| `Stop` | Supported | droid の最終応答で発火 |
-| `StopFailure` | Not supported | API エラー終端イベントは未実装 |
-| `TeammateIdle` | Not supported | team lifecycle 未実装 |
-| `ConfigChange` | Not supported | 動的 reload 未実装 |
-| `CwdChanged` | Not supported | persistent cwd モデル未実装 |
-| `FileChanged` | Not supported | watcher 未実装 |
-| `WorktreeCreate` | Not supported | worktree 機能未実装 |
-| `WorktreeRemove` | Not supported | worktree 機能未実装 |
-| `PreCompact` | Supported | compact 前に発火 |
-| `PostCompact` | Supported | compact 後に発火 |
-| `SessionEnd` | Supported | 対応済み |
-| `Elicitation` | Not supported | MCP elicitation 未実装 |
-| `ElicitationResult` | Not supported | MCP elicitation 未実装 |
-
-実装済みのフックタイプ:
-
-| Hook Type | Status | Notes |
-| --- | --- | --- |
-| `command` | Supported | 最小実装 |
-| `http` | Not supported | 未実装 |
-| `prompt` | Not supported | 未実装 |
-| `agent` | Not supported | 未実装 |
-
-最小例:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "type": "command",
-        "matcher": "Bash",
-        "command": "python3 .quiet-droid/hooks/block_rm.py"
-      }
-    ]
-  }
-}
-```
-
-フックにはイベント JSON が stdin で渡されます。`PreToolUse` では次のような JSON を stdout に返すと拒否できます。
-
-```json
-{
-  "hookSpecificOutput": {
-    "hookEventName": "PreToolUse",
-    "permissionDecision": "deny",
-    "permissionDecisionReason": "blocked by local hook"
-  }
-}
-```
-
-`Stop` は「droid が最終応答を返してターンが完了したとき」に発火します。`command` 以外のフックタイプと、Claude Code の高度な lifecycle / watcher 系イベントはまだ未対応です。
-
 ## 📝 Config Example
 
-最小構成の例:
+Minimal config:
 
 ```ini
 OPENAI_BASE_URL=http://localhost:8000/v1
@@ -351,43 +291,18 @@ OPENAI_API_KEY=your-api-key
 MODEL=gpt-4.1-mini
 ```
 
-## 🗂️ Project Structure
-
-```text
-quiet-droid.py
-quiet_droid/
-  __init__.py
-  app.py
-  agent.py
-  client.py
-  config.py
-  prompts.py
-  session.py
-  skills.py
-  terminal.py
-  tui.py
-  tools/
-    __init__.py
-    agents.py
-    base.py
-    bash.py
-    filesystem.py
-    registry.py
-```
-
 ## 📎 Notes
 
-- `OPENAI_BASE_URL` は `/v1` 付きでも無しでも動くようにしています。
-- `OPENAI_API_KEY` が必要なサーバでは設定してください。
-- モデル未指定時は、`/v1/models` とマシンのRAM量を見て自動選択を試みます。
-- `--yes` と `--dangerously-skip-permissions` は同じ意味で、ツール確認を自動承認します。
-- 互換目的で `OLLAMA_HOST` と `--ollama-host` も受けますが、内部的には `base_url` として扱います。
+- `OPENAI_BASE_URL` works with or without a `/v1` suffix.
+- Set `OPENAI_API_KEY` when your server requires one.
+- Startup fails when no model is configured.
+- `--yes` and `--dangerously-skip-permissions` have the same meaning: tool confirmations are approved automatically.
+- For compatibility, `OLLAMA_HOST` and `--ollama-host` are accepted and treated internally as `base_url`.
 
-## ✅ Verification
+## 💐 Acknowledgments
 
-構文確認:
+Thanks to Professor Yoichi Ochiai at the University of Tsukuba for publishing [vibe-local](https://github.com/ochyai/vibe-local).
 
-```bash
-python3 -m py_compile quiet-droid.py quiet_droid/*.py quiet_droid/tools/*.py
-python3 -m unittest discover -s tests -v
-```
+## 📄 License
+
+MIT
