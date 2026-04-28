@@ -4,6 +4,7 @@ import re
 
 from .bash import BashTool
 from .filesystem import EditTool, GlobTool, GrepTool, ReadTool, WriteTool
+from .interaction import AskUserQuestionTool
 
 
 class ToolRegistry:
@@ -27,13 +28,13 @@ class ToolRegistry:
         return self._cached_schemas
 
     def register_defaults(self):
-        for cls in [BashTool, ReadTool, WriteTool, EditTool, GlobTool, GrepTool]:
+        for cls in [BashTool, ReadTool, WriteTool, EditTool, GlobTool, GrepTool, AskUserQuestionTool]:
             self.register(cls())
         return self
 
 
 class PermissionMgr:
-    SAFE_TOOLS = {"Read", "Glob", "Grep"}
+    SAFE_TOOLS = {"Read", "Glob", "Grep", "AskUserQuestion"}
     ASK_TOOLS = {"Bash", "Write", "Edit", "SubAgent", "ParallelAgents"}
     _ALWAYS_CONFIRM_PATTERNS = [r"\brm\s+-rf\s+/", r"\bsudo\b", r"\bmkfs\b", r"\bdd\b.*\bof=/dev/"]
 

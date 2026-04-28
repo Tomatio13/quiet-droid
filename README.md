@@ -35,6 +35,7 @@
   - `Edit`
   - `Glob`
   - `Grep`
+  - `AskUserQuestion`
 - Agent helper tools
   - `SubAgent`
   - `ParallelAgents`
@@ -43,6 +44,7 @@
 - Automatic project instruction loading from `AGENTS.md`, `CLAUDE.md`, and `.quiet-droid.json`
 - Interactive mode and one-shot mode
 - Session storage, input history, and permission management
+- Session resume by project or explicit session ID
 
 ## 🚀 Quick Start
 
@@ -214,6 +216,17 @@ qd --resume
 qd --session-id 20260429_123456_ab12cd
 qd --list-sessions
 ```
+
+### Session Resume
+
+Quiet Droid stores conversations as JSONL files under the session directory.
+
+- `qd --resume` resumes the saved session associated with the current working directory.
+- If no project session is found, `qd --resume` falls back to the most recently saved session.
+- `qd --session-id <id>` resumes a specific session.
+- `qd --list-sessions` lists saved sessions without requiring a configured model.
+
+Session resume restores conversation messages and tool results. It does not roll back or restore files in the working tree.
 
 ## 💻 Usage
 

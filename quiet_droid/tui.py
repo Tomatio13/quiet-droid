@@ -370,7 +370,7 @@ class TUI:
   {C.DIM}$ + Enter      show skills / Tab for completion{C.RESET}
   {C.DIM}@path          inline file / Tab for completion{C.RESET}
   {_c51}━━ Tools {sep[8:]}{C.RESET}
-  {_c87}Bash, Read, Write, Edit, Glob, Grep, SubAgent, ParallelAgents{C.RESET}{ime_hint}
+  {_c87}Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, SubAgent, ParallelAgents{C.RESET}{ime_hint}
 """)
 
     def show_skill_list(self):
