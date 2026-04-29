@@ -13,6 +13,8 @@ _bg_tasks = {}
 _bg_task_counter = [0]
 _bg_tasks_lock = threading.Lock()
 MAX_BG_TASKS = 50
+INLINE_OUTPUT_LIMIT = 120000
+INLINE_OUTPUT_SLICE = INLINE_OUTPUT_LIMIT // 2
 
 
 class BashTool(Tool):
@@ -193,8 +195,8 @@ class BashTool(Tool):
                 output += f"\n(exit code: {proc.returncode})"
             if not output.strip():
                 output = "(no output)"
-            if len(output) > 30000:
-                output = output[:15000] + "\n\n... (truncated) ...\n\n" + output[-15000:]
+            if len(output) > INLINE_OUTPUT_LIMIT:
+                output = output[:INLINE_OUTPUT_SLICE] + "\n\n... (truncated) ...\n\n" + output[-INLINE_OUTPUT_SLICE:]
             return output.strip()
         except Exception as exc:
             return f"Error: {exc}"

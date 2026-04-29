@@ -67,6 +67,20 @@ class ConfigTests(unittest.TestCase):
 
         self.assertTrue(config.list_sessions)
 
+    def test_install_hooks_subcommand_is_loaded_from_cli(self):
+        config = Config()
+        config._load_cli_args(["install-hooks"])
+
+        self.assertTrue(config.install_hooks)
+        self.assertFalse(config.force_install_hooks)
+
+    def test_install_hooks_force_flag_is_loaded_from_cli(self):
+        config = Config()
+        config._load_cli_args(["install-hooks", "--force"])
+
+        self.assertTrue(config.install_hooks)
+        self.assertTrue(config.force_install_hooks)
+
 
 if __name__ == "__main__":
     unittest.main()

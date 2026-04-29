@@ -60,6 +60,8 @@ class HookManager:
             "cwd": os.getcwd(),
             "hook_event_name": event_name,
             "permission_mode": "yes_mode" if self._config.yes_mode else "default",
+            "model": getattr(self._config, "model", ""),
+            "api_base_url": getattr(self._config, "base_url", ""),
         }
 
     def _matches(self, handler, event_name, matcher):
@@ -144,3 +146,24 @@ class HookManager:
             )
             best_rank = rank
         return best
+
+    def transform_tool_response(self, event_name, tool_name, tool_input, tool_response, duration):
+        outputs = self.emit(
+            event_name,
+            payload={
+                "tool_name": tool_name,
+                "tool_input": dict(tool_input),
+                "tool_response": str(tool_response),
+                "duration_seconds": round(duration, 3),
+            },
+            matcher=tool_name,
+        )
+        transformed = None
+        for output in outputs:
+            spec = output.get("hookSpecificOutput", {})
+            if spec.get("hookEventName") != event_name:
+                continue
+            candidate = spec.get("transformedOutput")
+            if isinstance(candidate, str):
+                transformed = candidate
+        return transformed

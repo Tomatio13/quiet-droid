@@ -87,6 +87,13 @@ pipx install .
 pipx reinstall .
 ```
 
+オプションの smart-truncation hook を `~/.config/quiet-droid` に入れる:
+
+```bash
+quiet-droid install-hooks
+quiet-droid install-hooks --force
+```
+
 アンインストールする場合:
 
 ```bash
@@ -297,6 +304,12 @@ Skills はシステムプロンプトへ注入されます。
 - `./.quiet-droid/hooks.json`
 
 対応イベント、フックタイプ、設定例は [docs/hooks_JP.md](docs/hooks_JP.md) を参照してください。
+
+smart-truncation hook をグローバル設定へ入れる場合:
+
+```bash
+quiet-droid install-hooks
+```
 
 Claude Code の公式ドキュメント:
 

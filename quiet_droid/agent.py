@@ -78,17 +78,16 @@ class Agent:
         return False
 
     def _emit_tool_event(self, event_name, tool_name, tool_params, response, duration):
-        if self.hooks:
-            self.hooks.emit(
-                event_name,
-                {
-                    "tool_name": tool_name,
-                    "tool_input": dict(tool_params),
-                    "tool_response": str(response),
-                    "duration_seconds": round(duration, 3),
-                },
-                matcher=tool_name,
-            )
+        if not self.hooks:
+            return response
+        transformed = self.hooks.transform_tool_response(
+            event_name,
+            tool_name,
+            tool_params,
+            response,
+            duration,
+        )
+        return transformed if isinstance(transformed, str) else response
 
     def run(self, user_input):
         if self.hooks:
@@ -261,22 +260,22 @@ class Agent:
                             self.tui.stop_spinner()
                         is_error = isinstance(output, str) and (output.startswith("Error:") or output.startswith("Error -"))
                         event_name = "PostToolUseFailure" if is_error else "PostToolUse"
-                        self._emit_tool_event(event_name, tool_name, tool_params, output, duration)
+                        output = self._emit_tool_event(event_name, tool_name, tool_params, output, duration)
                         self.tui.show_tool_result(tool_name, output, is_error=is_error, duration=duration, params=tool_params)
                         results.append(ToolResult(tc_id, output, is_error))
                     except KeyboardInterrupt:
                         self.tui.stop_spinner()
                         duration = time.time() - tool_started
-                        self._emit_tool_event("PostToolUseFailure", tool_name, tool_params, "Interrupted by user", duration)
-                        results.append(ToolResult(tc_id, "Interrupted by user", True))
-                        self.tui.show_tool_result(tool_name, "Interrupted", True, duration=duration, params=tool_params)
+                        output = self._emit_tool_event("PostToolUseFailure", tool_name, tool_params, "Interrupted by user", duration)
+                        results.append(ToolResult(tc_id, output, True))
+                        self.tui.show_tool_result(tool_name, output, True, duration=duration, params=tool_params)
                         self._interrupted.set()
                         break
                     except Exception as exc:
                         self.tui.stop_spinner()
                         duration = time.time() - tool_started
                         error_msg = f"Tool error: {exc}"
-                        self._emit_tool_event("PostToolUseFailure", tool_name, tool_params, error_msg, duration)
+                        error_msg = self._emit_tool_event("PostToolUseFailure", tool_name, tool_params, error_msg, duration)
                         self.tui.show_tool_result(tool_name, error_msg, True, duration=duration, params=tool_params)
                         results.append(ToolResult(tc_id, error_msg, True))
 

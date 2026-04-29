@@ -1,6 +1,7 @@
 import json
 import os
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -16,6 +17,7 @@ class DummyConfig:
         self.config_dir = os.path.join(root, "config")
         self.sessions_dir = os.path.join(root, "sessions")
         self.permissions_file = os.path.join(self.config_dir, "permissions.json")
+        self.base_url = "http://localhost:11434/v1"
         self.yes_mode = False
         self.context_window = 256
         self.model = "test-model"
@@ -152,6 +154,75 @@ class HookTests(unittest.TestCase):
         with open(self.log_path, encoding="utf-8") as f:
             events = [json.loads(line)["hook_event_name"] for line in f if line.strip()]
         self.assertEqual(events, ["SubagentStart", "SubagentStop"])
+
+    def test_post_tool_use_can_transform_output(self):
+        write_executable(
+            self.script_path,
+            "\n".join(
+                [
+                    "#!/usr/bin/env python3",
+                    "import json, sys",
+                    "payload = json.load(sys.stdin)",
+                    "json.dump({",
+                    '  "hookSpecificOutput": {',
+                    '    "hookEventName": payload["hook_event_name"],',
+                    '    "transformedOutput": "short summary"',
+                    "  }",
+                    "}, sys.stdout)",
+                ]
+            ),
+        )
+        self._write_hooks(
+            {
+                "PostToolUse": [
+                    {
+                        "type": "command",
+                        "matcher": "Bash",
+                        "command": f"{sys.executable} {self.script_path}",
+                    }
+                ]
+            }
+        )
+        hooks = HookManager(self.config)
+        transformed = hooks.transform_tool_response(
+            "PostToolUse",
+            "Bash",
+            {"command": "pytest"},
+            "very long output",
+            1.234,
+        )
+        self.assertEqual(transformed, "short summary")
+
+    def test_smart_truncate_script_normalizes_project_dir(self):
+        project_root = self.root
+        nested_cwd = os.path.join(project_root, ".quiet-droid")
+        os.makedirs(nested_cwd, exist_ok=True)
+        script = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            ".quiet-droid",
+            "hooks",
+            "smart_truncate.py",
+        )
+        payload = {
+            "hook_event_name": "PostToolUse",
+            "api_base_url": "http://localhost:11434/v1",
+            "tool_name": "Bash",
+            "tool_response": "start\n" + ("noise\n" * 3000) + "Error: boom\n" + ("tail\n" * 200),
+        }
+        completed = subprocess.run(
+            [sys.executable, script],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            cwd=nested_cwd,
+            check=True,
+        )
+        output = json.loads(completed.stdout)
+        transformed = output["hookSpecificOutput"]["transformedOutput"]
+        self.assertIn("[full output saved to .quiet-droid/artifacts/", transformed)
+        artifact_dir = os.path.join(project_root, ".quiet-droid", "artifacts")
+        self.assertTrue(os.path.isdir(artifact_dir))
+        self.assertEqual(len(os.listdir(artifact_dir)), 1)
 
 
 if __name__ == "__main__":

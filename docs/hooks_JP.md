@@ -85,6 +85,21 @@ Claude Code フック一覧と `quiet-droid` の対応状況です。
 }
 ```
 
+`PostToolUse` / `PostToolUseFailure` では、UI 表示と session 履歴へ入るツール出力本文を差し替えられます。
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "transformedOutput": "full raw output の代わりに使う短い要約"
+  }
+}
+```
+
+hook payload には `model` と `api_base_url` も含まれるため、プロジェクトローカル hook 側で「ローカル LLM のときだけ有効」にできます。
+
+smart truncation hook の設計背景と内部仕様は [hook-smart-truncation-design_JP.md](hook-smart-truncation-design_JP.md) を参照してください。
+
 `Stop` は「droid が最終応答を返してターンが完了したとき」に発火します。
 
 `command` 以外のフックタイプと、Claude Code の高度な lifecycle / watcher 系イベントはまだ未対応です。
