@@ -85,6 +85,19 @@ Hooks receive event JSON through stdin.
 }
 ```
 
+`PostToolUse` and `PostToolUseFailure` can replace the tool output before it is shown in the UI and stored in session history.
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "transformedOutput": "short summary shown to the model instead of the full raw output"
+  }
+}
+```
+
+Hook payloads also include `model` and `api_base_url`, so project-local hooks can limit this behavior to local LLM backends.
+
 `Stop` fires when the droid returns its final response and the turn completes.
 
 Hook types other than `command`, and advanced Claude Code lifecycle / watcher events, are not supported yet.

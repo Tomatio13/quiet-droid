@@ -7,6 +7,7 @@ from .agent import Agent
 from .client import OpenAICompatClient
 from .config import Config
 from .hooks import HookManager
+from .hook_installer import install_hooks
 from .prompts import build_system_prompt
 from .session import Session
 from .skills import load_skills
@@ -30,6 +31,16 @@ def main():
         print("-" * 66)
         for saved in sessions:
             print(f"{saved['id']:<24} {saved['modified']:<18} {saved['messages']:<10} {saved['size']:<10}")
+        return
+
+    if config.install_hooks:
+        result = install_hooks(config, force=config.force_install_hooks)
+        if result["installed"]:
+            print(f"Installed hooks: {result['hooks_path']}")
+            print(f"Installed script: {result['script_path']}")
+        else:
+            print(f"Skipped: {result['hooks_path']} already exists")
+            print("Use `quiet-droid install-hooks --force` to overwrite.")
         return
 
     tui = TUI(config)

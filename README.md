@@ -87,6 +87,13 @@ Update:
 pipx reinstall .
 ```
 
+Install the optional smart-truncation hooks into `~/.config/quiet-droid`:
+
+```bash
+quiet-droid install-hooks
+quiet-droid install-hooks --force
+```
+
 Uninstall:
 
 ```bash
@@ -297,6 +304,12 @@ Quiet Droid supports `command` hooks as a minimal hook implementation. Hook conf
 - `./.quiet-droid/hooks.json`
 
 See [docs/hooks.md](docs/hooks.md) for supported events, hook types, and examples.
+
+To install the optional smart-truncation hook globally, run:
+
+```bash
+quiet-droid install-hooks
+```
 
 Claude Code official documentation:
 

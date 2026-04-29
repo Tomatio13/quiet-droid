@@ -28,6 +28,8 @@ class Config:
         self.resume = False
         self.session_id = None
         self.list_sessions = False
+        self.install_hooks = False
+        self.force_install_hooks = False
         self.cwd = os.getcwd()
 
         if os.name == "nt":
@@ -112,6 +114,8 @@ class Config:
 
     def _load_cli_args(self, argv=None):
         raw = list(argv) if argv is not None else list(__import__("sys").argv[1:])
+        if raw and raw[0] == "install-hooks":
+            raw = ["--install-hooks", *raw[1:]]
         normalized = []
         for arg in raw:
             if "\u3000" in arg:
@@ -129,6 +133,8 @@ class Config:
         parser.add_argument("--resume", action="store_true", help="Resume the saved session for this project")
         parser.add_argument("--session-id", help="Resume a specific saved session")
         parser.add_argument("--list-sessions", action="store_true", help="List saved sessions")
+        parser.add_argument("--install-hooks", action="store_true", help="Install smart truncation hooks into the user config directory")
+        parser.add_argument("--force", action="store_true", help="Overwrite existing files when used with install-hooks")
         parser.add_argument("--base-url", "--openai-base-url", dest="base_url", help="OpenAI-compatible base URL")
         parser.add_argument("--api-key", "--openai-api-key", dest="api_key", help="API key for the OpenAI-compatible API")
         parser.add_argument("--ollama-host", dest="base_url_legacy", help=argparse.SUPPRESS)
@@ -154,6 +160,10 @@ class Config:
             self.resume = True
         if args.list_sessions:
             self.list_sessions = True
+        if args.install_hooks:
+            self.install_hooks = True
+        if args.force:
+            self.force_install_hooks = True
         if args.base_url:
             self.base_url = args.base_url
         elif args.base_url_legacy:
