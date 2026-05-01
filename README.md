@@ -195,9 +195,18 @@ OPENAI_MODEL=gpt-4.1-mini
 MAX_TOKENS=8192
 TEMPERATURE=0.7
 CONTEXT_WINDOW=32768
+MICROCOMPACT_GAP_MINUTES=60
+MICROCOMPACT_KEEP_RECENT=5
 ```
 
 In the config file, `MODEL` takes precedence. `OPENAI_MODEL` is supported for compatibility.
+
+Microcompact settings:
+
+- `MICROCOMPACT_GAP_MINUTES`: idle minutes before old compactable tool results are cleared
+- `MICROCOMPACT_KEEP_RECENT`: number of recent compactable tool results to keep
+- Set `MICROCOMPACT_GAP_MINUTES=0` to disable microcompact
+- Defaults are `60` minutes and `5` results
 
 ### CLI
 
@@ -212,8 +221,17 @@ python3 quiet-droid.py \
   --max-tokens 8192 \
   --temperature 0.7 \
   --context-window 32768 \
+  --microcompact-gap 60 \
+  --microcompact-keep 5 \
   --debug \
   --yes
+```
+
+Microcompact can also be configured from the CLI:
+
+```bash
+qd --microcompact-gap 60 --microcompact-keep 5
+qd --microcompact-gap 0
 ```
 
 Resume a saved conversation:

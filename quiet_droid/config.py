@@ -28,12 +28,17 @@ class Config:
         self.resume = False
         self.session_id = None
         self.list_sessions = False
+        self.microcompact_gap_minutes = 60
+        self.microcompact_keep_recent = 5
         self.install_hooks = False
         self.force_install_hooks = False
         self.cwd = os.getcwd()
 
         if os.name == "nt":
-            appdata = os.environ.get("LOCALAPPDATA", os.path.join(os.path.expanduser("~"), "AppData", "Local"))
+            appdata = os.environ.get(
+                "LOCALAPPDATA",
+                os.path.join(os.path.expanduser("~"), "AppData", "Local"),
+            )
             self.config_dir = os.path.join(appdata, self.APP_NAME)
             self.state_dir = os.path.join(appdata, self.APP_NAME)
         else:
@@ -95,6 +100,16 @@ class Config:
                             self.context_window = int(val)
                         except ValueError:
                             pass
+                    elif key == "MICROCOMPACT_GAP_MINUTES" and val:
+                        try:
+                            self.microcompact_gap_minutes = int(val)
+                        except ValueError:
+                            pass
+                    elif key == "MICROCOMPACT_KEEP_RECENT" and val:
+                        try:
+                            self.microcompact_keep_recent = int(val)
+                        except ValueError:
+                            pass
         except OSError:
             pass
 
@@ -128,21 +143,63 @@ class Config:
         )
         parser.add_argument("-p", "--prompt", help="One-shot prompt (non-interactive)")
         parser.add_argument("-m", "--model", help="Model name")
-        parser.add_argument("-y", "--yes", action="store_true", help="Auto-approve all tool calls")
+        parser.add_argument(
+            "-y", "--yes", action="store_true", help="Auto-approve all tool calls"
+        )
         parser.add_argument("--debug", action="store_true", help="Debug mode")
-        parser.add_argument("--resume", action="store_true", help="Resume the saved session for this project")
+        parser.add_argument(
+            "--resume",
+            action="store_true",
+            help="Resume the saved session for this project",
+        )
         parser.add_argument("--session-id", help="Resume a specific saved session")
-        parser.add_argument("--list-sessions", action="store_true", help="List saved sessions")
-        parser.add_argument("--install-hooks", action="store_true", help="Install smart truncation hooks into the user config directory")
-        parser.add_argument("--force", action="store_true", help="Overwrite existing files when used with install-hooks")
-        parser.add_argument("--base-url", "--openai-base-url", dest="base_url", help="OpenAI-compatible base URL")
-        parser.add_argument("--api-key", "--openai-api-key", dest="api_key", help="API key for the OpenAI-compatible API")
-        parser.add_argument("--ollama-host", dest="base_url_legacy", help=argparse.SUPPRESS)
+        parser.add_argument(
+            "--list-sessions", action="store_true", help="List saved sessions"
+        )
+        parser.add_argument(
+            "--install-hooks",
+            action="store_true",
+            help="Install smart truncation hooks into the user config directory",
+        )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Overwrite existing files when used with install-hooks",
+        )
+        parser.add_argument(
+            "--base-url",
+            "--openai-base-url",
+            dest="base_url",
+            help="OpenAI-compatible base URL",
+        )
+        parser.add_argument(
+            "--api-key",
+            "--openai-api-key",
+            dest="api_key",
+            help="API key for the OpenAI-compatible API",
+        )
+        parser.add_argument(
+            "--ollama-host", dest="base_url_legacy", help=argparse.SUPPRESS
+        )
         parser.add_argument("--max-tokens", type=int, help="Max output tokens")
         parser.add_argument("--temperature", type=float, help="Sampling temperature")
         parser.add_argument("--context-window", type=int, help="Context window size")
-        parser.add_argument("--version", action="version", version=f"Quiet Droid {__version__}")
-        parser.add_argument("--dangerously-skip-permissions", action="store_true", help="Alias for -y")
+        parser.add_argument(
+            "--microcompact-gap",
+            type=int,
+            help="Idle minutes before clearing old tool results (0=disabled, default=60)",
+        )
+        parser.add_argument(
+            "--microcompact-keep",
+            type=int,
+            help="Number of recent tool results to keep (default=5)",
+        )
+        parser.add_argument(
+            "--version", action="version", version=f"Quiet Droid {__version__}"
+        )
+        parser.add_argument(
+            "--dangerously-skip-permissions", action="store_true", help="Alias for -y"
+        )
         args = parser.parse_args(normalized)
 
         if args.prompt:
@@ -176,6 +233,10 @@ class Config:
             self.temperature = args.temperature
         if args.context_window is not None:
             self.context_window = args.context_window
+        if args.microcompact_gap is not None:
+            self.microcompact_gap_minutes = args.microcompact_gap
+        if args.microcompact_keep is not None:
+            self.microcompact_keep_recent = max(1, args.microcompact_keep)
 
     def _validate_ollama_host(self):
         parsed = urllib.parse.urlparse(self.base_url)
@@ -210,6 +271,12 @@ class Config:
             try:
                 os.makedirs(directory, mode=0o700, exist_ok=True)
             except PermissionError:
-                print(f"Warning: Cannot create directory {directory} (permission denied).", file=__import__("sys").stderr)
+                print(
+                    f"Warning: Cannot create directory {directory} (permission denied).",
+                    file=__import__("sys").stderr,
+                )
             except OSError as e:
-                print(f"Warning: Cannot create directory {directory}: {e}", file=__import__("sys").stderr)
+                print(
+                    f"Warning: Cannot create directory {directory}: {e}",
+                    file=__import__("sys").stderr,
+                )

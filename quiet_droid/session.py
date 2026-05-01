@@ -3,8 +3,24 @@ import json
 import os
 import re
 import tempfile
+import time
 import uuid
 from datetime import datetime
+
+COMPACTABLE_TOOLS = frozenset(
+    {
+        "Read",
+        "Bash",
+        "Grep",
+        "Glob",
+        "Write",
+        "Edit",
+        "SubAgent",
+        "ParallelAgents",
+    }
+)
+MICROCOMPACT_CLEARED = "[Old tool result content cleared]"
+MICROCOMPACT_IMAGE_CLEARED = "[Old image cleared]"
 
 
 class Session:
@@ -17,13 +33,16 @@ class Session:
         self.messages = []
         self._client = None
         self._hooks = None
-        raw_id = config.session_id or (datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6])
+        raw_id = config.session_id or (
+            datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
+        )
         self.session_id = re.sub(r"[^A-Za-z0-9_\-]", "", raw_id)[:64] or (
             datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
         )
         self._token_estimate = 0
         self._last_compact_msg_count = 0
         self._just_compacted = False
+        self._last_microcompact_stats = None
 
     def set_client(self, client):
         self._client = client
@@ -63,7 +82,9 @@ class Session:
 
     @staticmethod
     def _cwd_hash(config):
-        return hashlib.sha256(os.path.abspath(config.cwd).encode("utf-8")).hexdigest()[:16]
+        return hashlib.sha256(os.path.abspath(config.cwd).encode("utf-8")).hexdigest()[
+            :16
+        ]
 
     @staticmethod
     def get_project_session(config):
@@ -74,7 +95,8 @@ class Session:
         if not text:
             return 0
         cjk_count = sum(
-            1 for ch in text
+            1
+            for ch in text
             if "\u4e00" <= ch <= "\u9fff"
             or "\u3400" <= ch <= "\u4dbf"
             or "\u3040" <= ch <= "\u30ff"
@@ -110,7 +132,9 @@ class Session:
             cut += 1
         self.messages = self.messages[cut:]
         skip = 0
-        while skip < len(self.messages) - 1 and self.messages[skip].get("role") == "tool":
+        while (
+            skip < len(self.messages) - 1 and self.messages[skip].get("role") == "tool"
+        ):
             skip += 1
         if skip:
             self.messages = self.messages[skip:]
@@ -125,6 +149,7 @@ class Session:
 
     def add_droid_message(self, text, tool_calls=None):
         msg = {"role": "assistant", "content": text if text else None}
+        msg["_timestamp"] = time.time()
         if tool_calls:
             msg["tool_calls"] = tool_calls
         self.messages.append(msg)
@@ -138,7 +163,12 @@ class Session:
             return None
         try:
             obj = json.loads(output)
-            if isinstance(obj, dict) and obj.get("type") == "image" and obj.get("media_type") and obj.get("data"):
+            if (
+                isinstance(obj, dict)
+                and obj.get("type") == "image"
+                and obj.get("media_type")
+                and obj.get("data")
+            ):
                 return obj["media_type"], obj["data"]
         except (json.JSONDecodeError, TypeError, KeyError):
             pass
@@ -152,25 +182,38 @@ class Session:
             if image_info is not None:
                 media_type, b64_data = image_info
                 data_uri = f"data:{media_type};base64,{b64_data}"
-                self.messages.append({"role": "tool", "tool_call_id": result.id, "content": f"[Image loaded: {media_type}]"})
-                self.messages.append({
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Image from ReadTool:"},
-                        {"type": "image_url", "image_url": {"url": data_uri}},
-                    ],
-                })
+                self.messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": result.id,
+                        "content": f"[Image loaded: {media_type}]",
+                    }
+                )
+                self.messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "Image from ReadTool:"},
+                            {"type": "image_url", "image_url": {"url": data_uri}},
+                        ],
+                    }
+                )
                 self._token_estimate += 800
                 continue
             if self._estimate_tokens(output) > max_result_tokens:
                 cutoff = max_result_tokens * 3
                 output = output[:cutoff] + "\n...(truncated: result too large)..."
-            self.messages.append({"role": "tool", "tool_call_id": result.id, "content": output})
+            self.messages.append(
+                {"role": "tool", "tool_call_id": result.id, "content": output}
+            )
             self._token_estimate += self._estimate_tokens(output)
         self._enforce_max_messages()
 
     def get_messages(self):
-        return [{"role": "system", "content": self.system_prompt}] + self.messages
+        msgs = [
+            {k: v for k, v in m.items() if k != "_timestamp"} for m in self.messages
+        ]
+        return [{"role": "system", "content": self.system_prompt}] + msgs
 
     def get_token_estimate(self):
         return self._token_estimate + self._estimate_tokens(self.system_prompt)
@@ -196,7 +239,10 @@ class Session:
             role = msg.get("role", "unknown")
             content = msg.get("content", "")
             if isinstance(content, list):
-                content = " ".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in content)
+                content = " ".join(
+                    p.get("text", "") if isinstance(p, dict) else str(p)
+                    for p in content
+                )
             if not content:
                 continue
             if len(content) > 300:
@@ -208,7 +254,10 @@ class Session:
         if len(transcript) > 4000:
             transcript = transcript[:4000] + "\n...(truncated)"
         prompt = [
-            {"role": "system", "content": "You are a concise summarizer. Respond ONLY with bullet points."},
+            {
+                "role": "system",
+                "content": "You are a concise summarizer. Respond ONLY with bullet points.",
+            },
             {
                 "role": "user",
                 "content": (
@@ -219,7 +268,9 @@ class Session:
             },
         ]
         try:
-            resp = self._client.chat(model=self.config.model, messages=prompt, tools=None, stream=False)
+            resp = self._client.chat(
+                model=self.config.model, messages=prompt, tools=None, stream=False
+            )
             choices = resp.get("choices", [])
             if choices:
                 summary = choices[0].get("message", {}).get("content", "")
@@ -240,7 +291,14 @@ class Session:
         before_tokens = self.get_token_estimate()
         before_messages = len(self.messages)
         if self._hooks:
-            self._hooks.emit("PreCompact", {"before_tokens": before_tokens, "message_count": before_messages, "forced": bool(force)})
+            self._hooks.emit(
+                "PreCompact",
+                {
+                    "before_tokens": before_tokens,
+                    "message_count": before_messages,
+                    "forced": bool(force),
+                },
+            )
         self._last_compact_msg_count = len(self.messages)
         preserve_count = min(30, len(self.messages))
         cutoff = len(self.messages) - preserve_count
@@ -250,21 +308,36 @@ class Session:
                 remaining = self.messages[cutoff:]
                 while remaining and remaining[0].get("role") == "tool":
                     remaining.pop(0)
-                if remaining and remaining[0].get("role") == "assistant" and remaining[0].get("tool_calls"):
+                if (
+                    remaining
+                    and remaining[0].get("role") == "assistant"
+                    and remaining[0].get("tool_calls")
+                ):
                     if len(remaining) < 2 or remaining[1].get("role") != "tool":
                         remaining.pop(0)
-                self.messages = [{"role": "user", "content": "[Earlier conversation summary]\n" + summary}] + remaining
+                self.messages = [
+                    {
+                        "role": "user",
+                        "content": "[Earlier conversation summary]\n" + summary,
+                    }
+                ] + remaining
                 self._last_compact_msg_count = len(self.messages)
                 self._recalculate_tokens()
                 self._just_compacted = True
                 return
         actual_cutoff = cutoff
-        while actual_cutoff < len(self.messages) and self.messages[actual_cutoff].get("role") == "tool":
+        while (
+            actual_cutoff < len(self.messages)
+            and self.messages[actual_cutoff].get("role") == "tool"
+        ):
             actual_cutoff += 1
         self.messages = self.messages[actual_cutoff:]
         if len(self.messages) > self.MAX_MESSAGES:
             cut_idx = len(self.messages) - self.MAX_MESSAGES
-            while cut_idx < len(self.messages) and self.messages[cut_idx].get("role") == "tool":
+            while (
+                cut_idx < len(self.messages)
+                and self.messages[cut_idx].get("role") == "tool"
+            ):
                 cut_idx += 1
             self.messages = self.messages[cut_idx:]
         skip = 0
@@ -278,7 +351,12 @@ class Session:
                 if msg.get("role") == "tool":
                     content = msg.get("content", "")
                     if len(content) > 500:
-                        self.messages[idx] = {**msg, "content": content[:200] + "\n...(truncated)...\n" + content[-200:]}
+                        self.messages[idx] = {
+                            **msg,
+                            "content": content[:200]
+                            + "\n...(truncated)...\n"
+                            + content[-200:],
+                        }
             self._recalculate_tokens()
         self._just_compacted = True
         if self._hooks:
@@ -292,6 +370,104 @@ class Session:
                     "forced": bool(force),
                 },
             )
+
+    def microcompact_if_needed(self):
+        try:
+            self._last_microcompact_stats = None
+            gap = getattr(self.config, "microcompact_gap_minutes", 60)
+            keep = max(1, getattr(self.config, "microcompact_keep_recent", 5))
+            if gap <= 0:
+                return False
+            before_tokens = self.get_token_estimate()
+
+            # Find last assistant message timestamp
+            last_ts = None
+            for msg in reversed(self.messages):
+                if msg.get("role") == "assistant" and "_timestamp" in msg:
+                    last_ts = msg["_timestamp"]
+                    break
+            if last_ts is None:
+                return False
+
+            gap_minutes = (time.time() - last_ts) / 60.0
+            if gap_minutes < gap:
+                return False
+
+            # Collect compactable tool call IDs in chronological order
+            compactable_ids = []
+            for msg in self.messages:
+                if msg.get("role") != "assistant":
+                    continue
+                for tc in msg.get("tool_calls") or []:
+                    name = tc.get("function", {}).get("name", "")
+                    if name in COMPACTABLE_TOOLS:
+                        compactable_ids.append(tc.get("id", ""))
+
+            if not compactable_ids:
+                return False
+
+            # Keep last N, clear the rest
+            keep_set = set(compactable_ids[-keep:])
+            clear_set = set(compactable_ids) - keep_set
+            if not clear_set:
+                return False
+
+            cleared = False
+            for i, msg in enumerate(self.messages):
+                if msg.get("role") != "tool":
+                    continue
+                tc_id = msg.get("tool_call_id", "")
+                if tc_id not in clear_set:
+                    continue
+                content = msg.get("content", "")
+                if content == MICROCOMPACT_CLEARED:
+                    continue
+                self.messages[i] = {**msg, "content": MICROCOMPACT_CLEARED}
+                cleared = True
+
+                if i + 1 >= len(self.messages):
+                    continue
+                next_msg = self.messages[i + 1]
+                if next_msg.get("role") != "user":
+                    continue
+                next_content = next_msg.get("content")
+                if not isinstance(next_content, list):
+                    continue
+                has_image = any(
+                    isinstance(part, dict) and part.get("type") == "image_url"
+                    for part in next_content
+                )
+                if not has_image:
+                    continue
+                self.messages[i + 1] = {
+                    **next_msg,
+                    "content": MICROCOMPACT_IMAGE_CLEARED,
+                }
+
+            if not cleared:
+                return False
+
+            self._recalculate_tokens()
+            tokens_saved = max(0, before_tokens - self.get_token_estimate())
+            self._last_microcompact_stats = {
+                "tokens_saved": tokens_saved,
+                "results_cleared": len(clear_set),
+                "gap_minutes": round(gap_minutes, 1),
+            }
+
+            if self._hooks:
+                self._hooks.emit(
+                    "PostMicrocompact",
+                    self._last_microcompact_stats,
+                )
+
+            return True
+        except Exception:
+            self._last_microcompact_stats = None
+            return False
+
+    def get_last_microcompact_stats(self):
+        return dict(self._last_microcompact_stats) if self._last_microcompact_stats else None
 
     def save(self):
         if not self.messages:
@@ -370,7 +546,9 @@ class Session:
             sessions.append(
                 {
                     "id": filename[:-6],
-                    "modified": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+                    "modified": datetime.fromtimestamp(mtime).strftime(
+                        "%Y-%m-%d %H:%M"
+                    ),
                     "size": size,
                     "messages": max(1, size // 200),
                 }

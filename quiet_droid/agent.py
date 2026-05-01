@@ -17,7 +17,17 @@ class Agent:
     MAX_RETRIES = 2
     MAX_SAME_TOOL_REPEAT = 3
 
-    def __init__(self, config, client, registry, permissions, session, tui, hooks=None, skills=None):
+    def __init__(
+        self,
+        config,
+        client,
+        registry,
+        permissions,
+        session,
+        tui,
+        hooks=None,
+        skills=None,
+    ):
         self.config = config
         self.client = client
         self.registry = registry
@@ -33,10 +43,16 @@ class Agent:
         text = user_input.strip()
         if len(text) < 10 or text.endswith("?") or text.endswith("？"):
             return []
-        numbered = re.findall(r"(?:^|\n\s*|\s{2,})(?:\d+[.)）]\s*|[（(]\d+[)）]\s*)(.+?)(?=(?:\n\s*|\s{2,})(?:\d+[.)）]|[（(]\d+)|$)", text)
+        numbered = re.findall(
+            r"(?:^|\n\s*|\s{2,})(?:\d+[.)）]\s*|[（(]\d+[)）]\s*)(.+?)(?=(?:\n\s*|\s{2,})(?:\d+[.)）]|[（(]\d+)|$)",
+            text,
+        )
         if len(numbered) >= 2:
             return [task.strip() for task in numbered if task.strip()]
-        investigate_pattern = re.compile(r"(?:調べ|探し|検索|数え|確認|教え|見つけ|search|find|count|check|list|show)", re.IGNORECASE)
+        investigate_pattern = re.compile(
+            r"(?:調べ|探し|検索|数え|確認|教え|見つけ|search|find|count|check|list|show)",
+            re.IGNORECASE,
+        )
         if investigate_pattern.search(text):
             parts = re.split(r"[、,]\s*(?:そして|また|and\s+)?|(?:と(?:、)?)", text)
             tasks = [part.strip() for part in parts if len(part.strip()) >= 5]
@@ -45,6 +61,7 @@ class Agent:
         return []
 
     def _ensure_context_window_before_send(self):
+        self._maybe_show_microcompact_result()
         status = self.session.context_window_status()
         if status["ok"]:
             return True
@@ -54,7 +71,9 @@ class Agent:
         status = self.session.context_window_status()
         if status["ok"]:
             pct = min(status["pct"], 100)
-            print(f"\n  {ansi(chr(27)+'[38;5;226m')}⚡ Auto-compacted: {before}→{status['current']} tokens ({pct}% used){C.RESET}")
+            print(
+                f"\n  {ansi(chr(27) + '[38;5;226m')}⚡ Auto-compacted: {before}→{status['current']} tokens ({pct}% used){C.RESET}"
+            )
             return True
 
         print(
@@ -77,6 +96,19 @@ class Agent:
             )
         return False
 
+    def _maybe_show_microcompact_result(self):
+        if not self.session.microcompact_if_needed():
+            return
+        stats = self.session.get_last_microcompact_stats()
+        if not stats:
+            return
+        print(
+            f"\n  {ansi(chr(27) + '[38;5;226m')}⚡ Micro-compacted: "
+            f"{stats['results_cleared']} results cleared, "
+            f"{stats['tokens_saved']} tokens saved "
+            f"after {stats['gap_minutes']}m idle{C.RESET}"
+        )
+
     def _emit_tool_event(self, event_name, tool_name, tool_params, response, duration):
         if not self.hooks:
             return response
@@ -97,10 +129,19 @@ class Agent:
             tool = self.registry.get("ParallelAgents")
             if tool:
                 self.session.add_user_message(user_input)
-                result = tool.execute({"tasks": [{"prompt": task, "max_turns": 10} for task in parallel_tasks]})
+                result = tool.execute(
+                    {
+                        "tasks": [
+                            {"prompt": task, "max_turns": 10} for task in parallel_tasks
+                        ]
+                    }
+                )
                 self.session.add_droid_message(result)
                 if self.hooks:
-                    self.hooks.emit("Stop", {"stop_reason": "parallel_agents", "response": result[:4000]})
+                    self.hooks.emit(
+                        "Stop",
+                        {"stop_reason": "parallel_agents", "response": result[:4000]},
+                    )
                 print(f"\n{C.BBLUE}droid{C.RESET}: ", end="")
                 self.tui._render_markdown(result)
                 print()
@@ -126,7 +167,9 @@ class Agent:
                     self.tui.start_spinner("Thinking")
                 else:
                     elapsed = int(time.time() - start_time)
-                    self.tui.start_spinner(f"Thinking (step {iteration + 1}, {elapsed}s)")
+                    self.tui.start_spinner(
+                        f"Thinking (step {iteration + 1}, {elapsed}s)"
+                    )
                 response = None
                 for retry in range(self.MAX_RETRIES + 1):
                     try:
@@ -148,10 +191,14 @@ class Agent:
                     break
 
                 if isinstance(response, dict):
-                    text, tool_calls = self.tui.show_sync_response(response, known_tools=self.registry.names())
+                    text, tool_calls = self.tui.show_sync_response(
+                        response, known_tools=self.registry.names()
+                    )
                 else:
                     try:
-                        text, tool_calls = self.tui.stream_response(response, known_tools=self.registry.names())
+                        text, tool_calls = self.tui.stream_response(
+                            response, known_tools=self.registry.names()
+                        )
                     finally:
                         if hasattr(response, "close"):
                             response.close()
@@ -159,7 +206,9 @@ class Agent:
                 if isinstance(response, dict) and not self.session._just_compacted:
                     usage = response.get("usage", {})
                     if usage.get("prompt_tokens", 0) > 0:
-                        self.session._token_estimate = usage["prompt_tokens"] + usage.get("completion_tokens", 0)
+                        self.session._token_estimate = usage[
+                            "prompt_tokens"
+                        ] + usage.get("completion_tokens", 0)
                 self.session._just_compacted = False
 
                 if not text and not tool_calls and iteration < self.MAX_ITERATIONS - 1:
@@ -173,24 +222,39 @@ class Agent:
                 self.session.add_droid_message(text, tool_calls if tool_calls else None)
                 if not tool_calls:
                     if self.hooks:
-                        self.hooks.emit("Stop", {"stop_reason": "droid_response", "response": (text or "")[:4000]})
+                        self.hooks.emit(
+                            "Stop",
+                            {
+                                "stop_reason": "droid_response",
+                                "response": (text or "")[:4000],
+                            },
+                        )
                     break
 
                 def normalize_args(raw):
                     try:
-                        return json.dumps(json.loads(raw), sort_keys=True) if isinstance(raw, str) else str(raw)
+                        return (
+                            json.dumps(json.loads(raw), sort_keys=True)
+                            if isinstance(raw, str)
+                            else str(raw)
+                        )
                     except (json.JSONDecodeError, TypeError, ValueError):
                         return str(raw)
 
                 current_calls = [
-                    (tc.get("function", {}).get("name", ""), normalize_args(tc.get("function", {}).get("arguments", "")))
+                    (
+                        tc.get("function", {}).get("name", ""),
+                        normalize_args(tc.get("function", {}).get("arguments", "")),
+                    )
                     for tc in tool_calls
                 ]
                 recent_tool_calls.append(current_calls)
                 if len(recent_tool_calls) >= self.MAX_SAME_TOOL_REPEAT:
-                    recent = recent_tool_calls[-self.MAX_SAME_TOOL_REPEAT:]
+                    recent = recent_tool_calls[-self.MAX_SAME_TOOL_REPEAT :]
                     if all(call == recent[0] for call in recent):
-                        print(f"\n{C.YELLOW}The AI got stuck repeating the same action. Stopped.{C.RESET}")
+                        print(
+                            f"\n{C.YELLOW}The AI got stuck repeating the same action. Stopped.{C.RESET}"
+                        )
                         break
                 if len(recent_tool_calls) > 10:
                     recent_tool_calls = recent_tool_calls[-10:]
@@ -203,20 +267,39 @@ class Agent:
                     tool_name = func.get("name", "")
                     raw_args = func.get("arguments", "{}")
                     try:
-                        tool_params = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+                        tool_params = (
+                            json.loads(raw_args)
+                            if isinstance(raw_args, str)
+                            else raw_args
+                        )
                         if not isinstance(tool_params, dict):
                             tool_params = {"raw": str(tool_params)}
                     except json.JSONDecodeError:
                         try:
                             parsed = ast.literal_eval(raw_args)
-                            tool_params = parsed if isinstance(parsed, dict) else {"raw": str(parsed)}
+                            tool_params = (
+                                parsed
+                                if isinstance(parsed, dict)
+                                else {"raw": str(parsed)}
+                            )
                         except (ValueError, SyntaxError):
                             try:
                                 fixed = re.sub(r",\s*}", "}", raw_args)
                                 fixed = re.sub(r",\s*]", "]", fixed)
                                 tool_params = json.loads(fixed)
-                            except (json.JSONDecodeError, ValueError, TypeError, KeyError):
-                                results.append(ToolResult(tc_id, f"Error: tool arguments are not valid JSON: {raw_args[:200]}", True))
+                            except (
+                                json.JSONDecodeError,
+                                ValueError,
+                                TypeError,
+                                KeyError,
+                            ):
+                                results.append(
+                                    ToolResult(
+                                        tc_id,
+                                        f"Error: tool arguments are not valid JSON: {raw_args[:200]}",
+                                        True,
+                                    )
+                                )
                                 continue
                     parsed_calls.append((tc_id, tool_name, tool_params))
 
@@ -224,24 +307,54 @@ class Agent:
                 for tc_id, tool_name, tool_params in parsed_calls:
                     tool = self.registry.get(tool_name)
                     if not tool:
-                        results.append(ToolResult(tc_id, f"Error: unknown tool '{tool_name}'", True))
+                        results.append(
+                            ToolResult(
+                                tc_id, f"Error: unknown tool '{tool_name}'", True
+                            )
+                        )
                         continue
                     tool_name = tool.name
-                    hook_decision = self.hooks.evaluate_pre_tool_use(tool_name, tool_params) if self.hooks else None
+                    hook_decision = (
+                        self.hooks.evaluate_pre_tool_use(tool_name, tool_params)
+                        if self.hooks
+                        else None
+                    )
                     if hook_decision and hook_decision.updated_input:
                         tool_params = hook_decision.updated_input
                     self.tui.show_tool_call(tool_name, tool_params)
                     if hook_decision and hook_decision.decision == "deny":
-                        message = hook_decision.reason or "Permission denied by hook. Do not retry this operation."
+                        message = (
+                            hook_decision.reason
+                            or "Permission denied by hook. Do not retry this operation."
+                        )
                         if self.hooks:
-                            self.hooks.emit("PermissionDenied", {"tool_name": tool_name, "tool_input": dict(tool_params)}, matcher=tool_name)
+                            self.hooks.emit(
+                                "PermissionDenied",
+                                {
+                                    "tool_name": tool_name,
+                                    "tool_input": dict(tool_params),
+                                },
+                                matcher=tool_name,
+                            )
                         results.append(ToolResult(tc_id, message, True))
                         self.tui.show_tool_result(tool_name, message, True)
                         continue
                     force_ask = bool(hook_decision and hook_decision.decision == "ask")
                     ask_reason = hook_decision.reason if hook_decision else ""
-                    if not self.permissions.check(tool_name, tool_params, self.tui, force_ask=force_ask, ask_reason=ask_reason):
-                        results.append(ToolResult(tc_id, "Permission denied by user. Do not retry this operation.", True))
+                    if not self.permissions.check(
+                        tool_name,
+                        tool_params,
+                        self.tui,
+                        force_ask=force_ask,
+                        ask_reason=ask_reason,
+                    ):
+                        results.append(
+                            ToolResult(
+                                tc_id,
+                                "Permission denied by user. Do not retry this operation.",
+                                True,
+                            )
+                        )
                         self.tui.show_tool_result(tool_name, "Permission denied", True)
                         continue
                     validated_calls.append((tc_id, tool_name, tool_params, tool))
@@ -258,25 +371,59 @@ class Agent:
                         duration = time.time() - tool_started
                         if is_long_op:
                             self.tui.stop_spinner()
-                        is_error = isinstance(output, str) and (output.startswith("Error:") or output.startswith("Error -"))
+                        is_error = isinstance(output, str) and (
+                            output.startswith("Error:") or output.startswith("Error -")
+                        )
                         event_name = "PostToolUseFailure" if is_error else "PostToolUse"
-                        output = self._emit_tool_event(event_name, tool_name, tool_params, output, duration)
-                        self.tui.show_tool_result(tool_name, output, is_error=is_error, duration=duration, params=tool_params)
+                        output = self._emit_tool_event(
+                            event_name, tool_name, tool_params, output, duration
+                        )
+                        self.tui.show_tool_result(
+                            tool_name,
+                            output,
+                            is_error=is_error,
+                            duration=duration,
+                            params=tool_params,
+                        )
                         results.append(ToolResult(tc_id, output, is_error))
                     except KeyboardInterrupt:
                         self.tui.stop_spinner()
                         duration = time.time() - tool_started
-                        output = self._emit_tool_event("PostToolUseFailure", tool_name, tool_params, "Interrupted by user", duration)
+                        output = self._emit_tool_event(
+                            "PostToolUseFailure",
+                            tool_name,
+                            tool_params,
+                            "Interrupted by user",
+                            duration,
+                        )
                         results.append(ToolResult(tc_id, output, True))
-                        self.tui.show_tool_result(tool_name, output, True, duration=duration, params=tool_params)
+                        self.tui.show_tool_result(
+                            tool_name,
+                            output,
+                            True,
+                            duration=duration,
+                            params=tool_params,
+                        )
                         self._interrupted.set()
                         break
                     except Exception as exc:
                         self.tui.stop_spinner()
                         duration = time.time() - tool_started
                         error_msg = f"Tool error: {exc}"
-                        error_msg = self._emit_tool_event("PostToolUseFailure", tool_name, tool_params, error_msg, duration)
-                        self.tui.show_tool_result(tool_name, error_msg, True, duration=duration, params=tool_params)
+                        error_msg = self._emit_tool_event(
+                            "PostToolUseFailure",
+                            tool_name,
+                            tool_params,
+                            error_msg,
+                            duration,
+                        )
+                        self.tui.show_tool_result(
+                            tool_name,
+                            error_msg,
+                            True,
+                            duration=duration,
+                            params=tool_params,
+                        )
                         results.append(ToolResult(tc_id, error_msg, True))
 
                 if self._interrupted.is_set():
@@ -289,12 +436,15 @@ class Agent:
                 if self._interrupted.is_set():
                     break
 
+                self._maybe_show_microcompact_result()
                 before = self.session.get_token_estimate()
                 self.session.compact_if_needed()
                 after = self.session.get_token_estimate()
                 if after < before * 0.9:
                     pct = min(int((after / self.config.context_window) * 100), 100)
-                    print(f"\n  {ansi(chr(27)+'[38;5;226m')}⚡ Auto-compacted: {before}→{after} tokens ({pct}% used){C.RESET}")
+                    print(
+                        f"\n  {ansi(chr(27) + '[38;5;226m')}⚡ Auto-compacted: {before}→{after} tokens ({pct}% used){C.RESET}"
+                    )
             except KeyboardInterrupt:
                 self.tui.stop_spinner()
                 if text:
@@ -308,7 +458,9 @@ class Agent:
                 break
             except urllib.error.URLError:
                 self.tui.stop_spinner()
-                print(f"\n{C.RED}OpenAI-compatible API への接続が失われました。{C.RESET}")
+                print(
+                    f"\n{C.RED}OpenAI-compatible API への接続が失われました。{C.RESET}"
+                )
                 break
             except Exception as exc:
                 self.tui.stop_spinner()
