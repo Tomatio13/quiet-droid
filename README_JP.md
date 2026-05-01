@@ -195,9 +195,18 @@ OPENAI_MODEL=gpt-4.1-mini
 MAX_TOKENS=8192
 TEMPERATURE=0.7
 CONTEXT_WINDOW=32768
+MICROCOMPACT_GAP_MINUTES=60
+MICROCOMPACT_KEEP_RECENT=5
 ```
 
 config ファイルでは `MODEL` を優先し、互換目的で `OPENAI_MODEL` も利用できます。
+
+microcompact の設定:
+
+- `MICROCOMPACT_GAP_MINUTES`: 一定時間アイドル後に古い compactable tool result をクリアするまでの分数
+- `MICROCOMPACT_KEEP_RECENT`: 保持する直近の compactable tool result の件数
+- `MICROCOMPACT_GAP_MINUTES=0` を指定すると microcompact を無効化できます
+- デフォルト値は `60` 分 / `5` 件です
 
 ### CLI
 
@@ -212,8 +221,17 @@ python3 quiet-droid.py \
   --max-tokens 8192 \
   --temperature 0.7 \
   --context-window 32768 \
+  --microcompact-gap 60 \
+  --microcompact-keep 5 \
   --debug \
   --yes
+```
+
+microcompact は CLI からも設定できます:
+
+```bash
+qd --microcompact-gap 60 --microcompact-keep 5
+qd --microcompact-gap 0
 ```
 
 保存済みの会話を再開:
