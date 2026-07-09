@@ -39,6 +39,7 @@
 - エージェント補助ツール
   - `SubAgent`
   - `ParallelAgents`
+- 長時間タスクのゴール管理（`/goal`）— 目的を設定すると、自動継続・トークン予算管理・自己完了判定付きでエージェントがゴール達成まで動き続けます。詳しくは [docs/goal_JP.md](docs/goal_JP.md)
 - Skills の自動読込
 - Hooks
 - `AGENTS.md` / `CLAUDE.md` / `.quiet-droid.json` によるプロジェクト指示の自動読込
@@ -281,6 +282,7 @@ qd --help
 - `/status`
 - `/save`
 - `/compact`
+- `/goal`
 - `/model`
 - `/models`
 - `/yes`

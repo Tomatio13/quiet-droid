@@ -34,7 +34,7 @@ class ToolRegistry:
 
 
 class PermissionMgr:
-    SAFE_TOOLS = {"Read", "Glob", "Grep", "AskUserQuestion"}
+    SAFE_TOOLS = {"Read", "Glob", "Grep", "AskUserQuestion", "update_goal"}
     ASK_TOOLS = {"Bash", "Write", "Edit", "SubAgent", "ParallelAgents"}
     _ALWAYS_CONFIRM_PATTERNS = [r"\brm\s+-rf\s+/", r"\bsudo\b", r"\bmkfs\b", r"\bdd\b.*\bof=/dev/"]
 

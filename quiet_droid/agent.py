@@ -27,6 +27,7 @@ class Agent:
         tui,
         hooks=None,
         skills=None,
+        goal_runtime=None,
     ):
         self.config = config
         self.client = client
@@ -36,6 +37,7 @@ class Agent:
         self.tui = tui
         self.hooks = hooks
         self.skills = skills or {}
+        self.goal_runtime = goal_runtime
         self._interrupted = threading.Event()
 
     @staticmethod
@@ -151,6 +153,40 @@ class Agent:
         effective_input = inject_skill_context(effective_input, self.skills)
         self.session.add_user_message(effective_input)
         self._interrupted.clear()
+        if self.goal_runtime:
+            self.goal_runtime.reset_turn_count()
+            self.goal_runtime.refresh_overlay(self.session.session_id, self.session)
+            self.goal_runtime.begin_turn(self.session.session_id, self.session)
+        self._run_loop()
+
+    def run_goal(self):
+        """Kick the agent into motion for an active goal.
+
+        Unlike :meth:`run`, no user message is added — the first turn is
+        seeded by a goal-pursuit prompt. This is invoked when the user
+        sets/edits/resumes a goal from the ``/goal`` command. Does nothing
+        when there is no active goal or no goal runtime.
+        """
+        if not self.goal_runtime:
+            return
+        session_id = self.session.session_id
+        if not self.goal_runtime.start_goal(session_id, self.session):
+            return
+        self.session.add_user_message(
+            "Pursue the active goal. Take the next concrete step toward it."
+        )
+        self._interrupted.clear()
+        self._run_loop()
+
+
+    def _run_loop(self):
+        """The shared agent turn loop (model calls + tool execution).
+
+        Handles goal continuation at turn boundaries. Callers are
+        responsible for seeding the first user message, clearing the
+        interrupt flag, resetting the goal turn count, and starting the
+        first goal turn before entering.
+        """
         recent_tool_calls = []
         empty_retries = 0
         start_time = time.time()
@@ -221,6 +257,8 @@ class Agent:
 
                 self.session.add_droid_message(text, tool_calls if tool_calls else None)
                 if not tool_calls:
+                    if self.goal_runtime and self._try_continue_goal():
+                        continue
                     if self.hooks:
                         self.hooks.emit(
                             "Stop",
@@ -469,7 +507,38 @@ class Agent:
                     import traceback
 
                     traceback.print_exc()
+                if self.goal_runtime:
+                    self.goal_runtime.mark_blocked(self.session.session_id)
                 break
+
+    def _try_continue_goal(self):
+        """Decide whether to start another turn for an active goal.
+
+        Called when the model produced a final text response (no tool calls).
+        Accounts usage, checks the budget, and — for an active, non-terminal
+        goal — injects a continuation steering message and returns True so the
+        caller continues the turn loop. Returns False when there is no goal,
+        the goal is not active, the budget is exhausted, the turn cap is hit,
+        or the user interrupted.
+        """
+        if not self.goal_runtime or self._interrupted.is_set():
+            return False
+        session_id = self.session.session_id
+        self.goal_runtime.account_turn_usage(session_id, self.session)
+        goal = self.goal_runtime.check_budget(session_id)
+        if goal is not None and not goal.is_active():
+            print(
+                f"\n  {C.DIM}Goal {goal.status}. Automatic continuation stopped.{C.RESET}"
+            )
+            return False
+        if self.goal_runtime.inject_continuation(session_id, self.session, goal=goal):
+            print(
+                f"\n  {ansi(chr(27) + '[38;5;38m')}▶ Goal continuation "
+                f"(turn {self.goal_runtime.goal_turn_count}){C.RESET}"
+            )
+            self.goal_runtime.begin_turn(session_id, self.session)
+            return True
+        return False
 
     def interrupt(self):
         self._interrupted.set()

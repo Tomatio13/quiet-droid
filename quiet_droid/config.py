@@ -61,6 +61,7 @@ class Config:
         self.permissions_file = os.path.join(self.config_dir, "permissions.json")
         self.sessions_dir = os.path.join(self.state_dir, "sessions")
         self.history_file = os.path.join(self.state_dir, "history")
+        self.goal_db_path = os.path.join(self.state_dir, "goals.db")
 
     def _load_config_file(self):
         if not os.path.isfile(self.config_file) or os.path.islink(self.config_file):

@@ -43,12 +43,25 @@ class Session:
         self._last_compact_msg_count = 0
         self._just_compacted = False
         self._last_microcompact_stats = None
+        self._goal_overlay = ""
 
     def set_client(self, client):
         self._client = client
 
     def set_hooks(self, hooks):
         self._hooks = hooks
+
+    def set_goal_overlay(self, text):
+        """Set the active-goal overlay appended to the system prompt.
+
+        Pass an empty string (or None) to clear it. Token estimates are
+        recomputed so compact/microcompact thresholds reflect the change.
+        """
+        self._goal_overlay = text or ""
+        self._recalculate_tokens()
+
+    def get_goal_overlay(self):
+        return self._goal_overlay
 
     @staticmethod
     def _project_index_path(config):
@@ -213,10 +226,17 @@ class Session:
         msgs = [
             {k: v for k, v in m.items() if k != "_timestamp"} for m in self.messages
         ]
-        return [{"role": "system", "content": self.system_prompt}] + msgs
+        system = self.system_prompt
+        if self._goal_overlay:
+            system += "\n\n" + self._goal_overlay
+        return [{"role": "system", "content": system}] + msgs
 
     def get_token_estimate(self):
-        return self._token_estimate + self._estimate_tokens(self.system_prompt)
+        return (
+            self._token_estimate
+            + self._estimate_tokens(self.system_prompt)
+            + self._estimate_tokens(self._goal_overlay)
+        )
 
     def context_window_status(self):
         current = self.get_token_estimate()

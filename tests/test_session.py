@@ -285,5 +285,45 @@ class MicrocompactTests(unittest.TestCase):
         self.assertNotIn("AskUserQuestion", COMPACTABLE_TOOLS)
 
 
+class GoalOverlayTests(unittest.TestCase):
+    def _make_session(self):
+        return Session(DummyConfig(context_window=10000), "base-system-prompt")
+
+    def test_overlay_default_empty(self):
+        session = self._make_session()
+        self.assertEqual(session.get_goal_overlay(), "")
+        msgs = session.get_messages()
+        self.assertEqual(msgs[0]["content"], "base-system-prompt")
+
+    def test_set_overlay_appends_to_system_prompt(self):
+        session = self._make_session()
+        session.set_goal_overlay("# Active Goal\nObjective: x")
+        msgs = session.get_messages()
+        self.assertIn("# Active Goal", msgs[0]["content"])
+        self.assertIn("base-system-prompt", msgs[0]["content"])
+        self.assertTrue(
+            msgs[0]["content"].startswith("base-system-prompt"),
+            "overlay should come after the base system prompt",
+        )
+
+    def test_set_overlay_none_clears(self):
+        session = self._make_session()
+        session.set_goal_overlay("overlay text")
+        session.set_goal_overlay(None)
+        self.assertEqual(session.get_goal_overlay(), "")
+        msgs = session.get_messages()
+        self.assertEqual(msgs[0]["content"], "base-system-prompt")
+
+    def test_overlay_included_in_token_estimate(self):
+        session = self._make_session()
+        base = session.get_token_estimate()
+        session.set_goal_overlay("# Active Goal\nObjective: ship it")
+        with_overlay = session.get_token_estimate()
+        self.assertGreater(with_overlay, base)
+        # clearing returns to baseline
+        session.set_goal_overlay("")
+        self.assertEqual(session.get_token_estimate(), base)
+
+
 if __name__ == "__main__":
     unittest.main()

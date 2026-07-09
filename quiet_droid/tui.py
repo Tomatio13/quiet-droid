@@ -29,6 +29,7 @@ SLASH_COMMAND_SPECS = [
     ("/status", "Session info"),
     ("/save", "Save session"),
     ("/compact", "Compress context"),
+    ("/goal", "Set or view a long-running task goal"),
     ("/resume", "Use qd --resume"),
     ("/yes", "Auto-approve ON"),
     ("/no", "Auto-approve OFF"),
@@ -330,8 +331,20 @@ class TUI:
         print()
         return "".join(text_parts), []
 
+    def confirm(self, prompt, default=False):
+        """Yes/no confirmation. Returns True for yes, False for no.
+
+        ``default`` is returned on empty input.
+        """
+        suffix = " [Y/n] " if default else " [y/N] "
+        answer = input(f"{C.CYAN}{prompt}{suffix}{C.RESET}").strip().lower()
+        if answer in ("y", "yes"):
+            return True
+        if answer in ("n", "no"):
+            return False
+        return default
+
     def ask_permission(self, tool_name, params, reason=""):
-        summary = tool_name
         if tool_name == "Bash":
             summary = params.get("command", "")
         elif "file_path" in params:

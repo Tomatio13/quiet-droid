@@ -6,13 +6,16 @@ import time
 from .agent import Agent
 from .client import OpenAICompatClient
 from .config import Config
+from .goal_controller import GoalController
+from .goal_runtime import GoalRuntime
+from .goal_store import GoalStore
 from .hooks import HookManager
 from .hook_installer import install_hooks
 from .prompts import build_system_prompt
 from .session import Session
 from .skills import load_skills
 from .terminal import C, ansi, init_terminal_colors
-from .tools import MultiAgentCoordinator, ParallelAgentTool, PermissionMgr, SubAgentTool, ToolRegistry
+from .tools import MultiAgentCoordinator, ParallelAgentTool, PermissionMgr, SubAgentTool, ToolRegistry, UpdateGoalTool
 from .tui import HAS_READLINE, TUI, readline
 
 
@@ -74,7 +77,13 @@ def main():
     registry.register(SubAgentTool(config, client, registry, permissions, hooks))
     coordinator = MultiAgentCoordinator(config, client, registry, permissions, hooks)
     registry.register(ParallelAgentTool(coordinator))
-    agent = Agent(config, client, registry, permissions, session, tui, hooks, skills=skills)
+    goal_store = GoalStore(config.goal_db_path)
+    registry.register(
+        UpdateGoalTool(goal_store, lambda: session.session_id)
+    )
+    goal_runtime = GoalRuntime(goal_store)
+    agent = Agent(config, client, registry, permissions, session, tui, hooks, skills=skills, goal_runtime=goal_runtime)
+    goal_controller = GoalController(config, tui)
     hooks.emit("SessionStart", {"source": "prompt" if config.prompt else "interactive"})
 
     def show_resume_info(label):
@@ -111,6 +120,19 @@ def main():
                     show_resume_info(sessions[0]["id"])
                 else:
                     print(f"{C.YELLOW}Could not resume. Starting new session.{C.RESET}")
+
+    # Restore any persisted goal for this session into the system prompt.
+    restored_goal = goal_runtime.refresh_overlay(session.session_id, session)
+    if restored_goal is not None:
+        if restored_goal.status == "paused":
+            print(
+                f"  {C.DIM}Goal is paused: {restored_goal.objective}{C.RESET}\n"
+                f"  {C.DIM}Use /goal resume to continue, or /goal to view.{C.RESET}\n"
+            )
+        elif restored_goal.is_active():
+            print(
+                f"  {C.DIM}Active goal restored: {restored_goal.objective}{C.RESET}\n"
+            )
 
     def signal_handler(sig, frame):
         agent.interrupt()
@@ -184,6 +206,13 @@ def main():
                         session.compact_if_needed(force=True)
                         after = session.get_token_estimate()
                         print(f"{C.GREEN}Compacted: {before} -> {after} tokens{C.RESET}" if after < before else f"{C.DIM}Already compact ({after} tokens){C.RESET}")
+                        continue
+                    if cmd == "/goal":
+                        if goal_controller.handle_slash(user_input, session.session_id):
+                            # Setting/editing/resuming an active goal kicks the
+                            # agent into motion, mirroring Codex's behavior.
+                            agent.run_goal()
+                            session.save()
                         continue
                     if cmd in {"/model", "/models"}:
                         parts = user_input.split(maxsplit=1)
