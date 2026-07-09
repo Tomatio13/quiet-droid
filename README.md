@@ -39,6 +39,7 @@
 - Agent helper tools
   - `SubAgent`
   - `ParallelAgents`
+- Long-running task goals with `/goal` — set an objective and the agent pursues it across turns with automatic continuation, token budgeting, and self-completion. See [docs/goal_JP.md](docs/goal_JP.md).
 - Automatic Skills loading
 - Hooks
 - Automatic project instruction loading from `AGENTS.md`, `CLAUDE.md`, and `.quiet-droid.json`
@@ -281,6 +282,7 @@ qd --help
 - `/status`
 - `/save`
 - `/compact`
+- `/goal`
 - `/model`
 - `/models`
 - `/yes`
